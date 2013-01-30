@@ -1,20 +1,18 @@
 Maven build of Amazon's java-aws-mturk
 
-http://tommy.chheng.com
-
 Add to your pom.xml:
 <repositories>
-    <repository>
-        <id>tc-maven-repo</id>
-        <url>http://github.com/tc/tc-maven-repo/raw/master/releases</url>
-    </repository>
+  <repository>
+    <id>clojars.org</id>
+    <url>http://clojars.org/repo</url>
+  </repository>
 </repositories>
 
 
 <dependencies>
-    <dependency>
-        <groupId>com.amazon</groupId>
-        <artifactId>java-aws-mturk</artifactId>
-        <version>1.2.2</version>
-    </dependency>
+  <dependency>
+    <groupId>org.clojars.zaxtax</groupId>
+    <artifactId>java-aws-mturk</artifactId>
+    <version>1.2.2</version>
+  </dependency>
 </dependencies>
