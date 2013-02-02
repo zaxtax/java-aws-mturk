@@ -174,7 +174,7 @@
       </xs:documentation>
     </xs:annotation>
     <xs:restriction base="xs:anyURI">
-      <xs:pattern value="http://.*|https://.*|ftp://.*|news://.*|nntp://.*|mailto://.*|gopher://.*|telnet://.*"/>
+      <xs:pattern value="http://.*|https://.*|ftp://.*|news://.*|nntp://.*|mailto:.*|gopher://.*|telnet://.*"/>
     </xs:restriction>
   </xs:simpleType>
 

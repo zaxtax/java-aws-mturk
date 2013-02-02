@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  Copyright 2007-2008 Amazon Technologies, Inc.
+  Copyright 2007-2012 Amazon Technologies, Inc.
  
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -189,6 +189,7 @@
       <fileset dir="${etc.dir}">
         <include name="previewHITHeader.xml"/>
         <include name="previewHITFooter.xml"/>
+        <include name="mturk-client-config.wsdd"/>
       </fileset>
     </copy>
 
@@ -200,6 +201,9 @@
         <include name="FormattedContentXHTMLSubset.xsd"/>
         <include name="ExternalQuestion.xsd"/>
       </fileset>
+      <fileset dir="${etc.dir}/schema/2011-11-11">
+        <include name="HTMLQuestion.xsd"/>
+      </fileset>
       <fileset dir="${etc.dir}/xform">
         <include name="HIT.xsl"/>
       </fileset>
@@ -207,14 +211,6 @@
 
     <echo message="Creating SDK jar..." />
     <jar destfile="${sdk.jar}">
-
-      <fileset dir="${stub.classes.dir}" includes="**/*.class"/>
-      <fileset dir="${stub.src.dir}" includes="**/*.java"/>
-
-      <fileset dir="${dataschema.classes.dir}" includes="**/*"/>
-      <fileset dir="${dataschema.src.dir}" includes="**/*.java"/>
-
-
       <fileset dir="${sdk.classes.dir}" includes="com/**" excludes="**/test/*.class"/>
       <fileset dir="${sdk.src.dir}" includes="**/*.java"/>
       <!-- Note: The notice file is different for the jars than the distributable. -->
@@ -263,14 +259,14 @@
     </javac>
   </target>
 
-  <target name="helloworld" depends="compile-sample" description="Run the sample app">
+  <target name="helloworld" depends="compile-sample" description="Run the hello world sample app">
     <echo message="Running the Hello World sample application..." />
     <java dir="${sample.src.dir}/helloworld/" classname="helloworld.MTurkHelloWorld" fork="true">
       <classpath refid="runtime.classpath"/>
     </java>
   </target>
 
-  <target name="image" description="Run the sample app">
+  <target name="image" description="Run the image sample app">
     <antcall target="imageWithoutPreview"/>
     <antcall target="imageWithPreview"/>
   </target>
@@ -290,21 +286,21 @@
     </java>
   </target>
 
-  <target name="survey" depends="compile-sample" description="Run the sample app">
+  <target name="survey" depends="compile-sample" description="Run the simple survey sample app">
     <echo message="Running the Simple Survey sample application..." />
     <java dir="${sample.src.dir}/simple_survey/" classname="simple_survey.SimpleSurvey" fork="true">
       <classpath refid="runtime.classpath"/>
     </java>
   </target>
 
-  <target name="category" depends="compile-sample" description="Run the sample app">
+  <target name="category" depends="compile-sample" description="Run the site category sample app">
     <echo message="Running the Site Category sample application..." />
     <java dir="${sample.src.dir}/site_category/" classname="site_category.SiteCategory" fork="true">
       <classpath refid="runtime.classpath"/>
     </java>
   </target>
 
-  <target name="reviewerForHITFile" depends="compile-sample" description="Run the sample app">
+  <target name="reviewerForHITFile" depends="compile-sample" description="Run the HIT reviewer sample app">
     <echo message="Running the Reviewer sample application..." />
     <java dir="." classname="reviewer.Reviewer" fork="true">
       <arg line="${success_file}"/>
@@ -313,7 +309,7 @@
     </java>
   </target>
 
-  <target name="reviewerForHIT" depends="compile-sample" description="Run the sample app">
+  <target name="reviewerForHIT" depends="compile-sample" description="Run the HIT reviewer sample app">
     <echo message="Running the Reviewer sample application..." />
     <java dir="." classname="reviewer.Reviewer" fork="true">
       <arg line="${hitID}"/>
@@ -321,9 +317,24 @@
     </java>
   </target>
 
-  <target name="filter" depends="compile-sample" description="Run the sample app">
+  <target name="filter" depends="compile-sample" description="Run the filter sample app">
     <echo message="Running the Filter sample application..." />
     <java dir="${sample.src.dir}/filter/" classname="filter.MyHIT" fork="true">
+      <classpath refid="runtime.classpath"/>
+    </java>
+  </target>
+  
+  <target name="review-policy" depends="compile-sample" description="Run the review policy sample app">
+    <echo message="Running the review-policy sample application..." />
+    <java dir="${sample.src.dir}/review_policy/" classname="review_policy.ReviewPolicyExample" fork="true">
+      <classpath refid="runtime.classpath"/>
+    </java>
+  </target>
+
+  <target name="review-policy-results" depends="compile-sample" description="Run the review policy sample app">
+    <echo message="Running the review-policy sample application..." />
+    <java dir="${sample.src.dir}/review_policy/" classname="review_policy.ReviewPolicyExample" fork="true">
+      <arg line="${hitID}"/>
       <classpath refid="runtime.classpath"/>
     </java>
   </target>
@@ -335,6 +346,7 @@
     <antcall target="category" />
     <antcall target="reviewerForHIT" />
     <antcall target="filter" />
+    <antcall target="review-policy" />
   </target>
 
   <target name="copy-test-resources" description="Copies resources required by the tests">
@@ -358,9 +370,9 @@
     <echo message="Running the TestRequesterService test suite..." />
     <java dir="${sdk.test.classes.dir}" classname="com.amazonaws.mturk.test.TestRequesterService" fork="true">
       <classpath>
-         <path refid="test.classpath" />
-         <pathelement location="${lib.dir}/${sdk.name}-test.jar" />
-         <pathelement path="${sdk.test.classes.dir}" />
+        <path refid="test.classpath" />
+        <pathelement location="${lib.dir}/${sdk.name}-test.jar" />
+        <pathelement path="${sdk.test.classes.dir}" />
       </classpath>
     </java>
     <echo message="Running the TestFilter test suite..." />
@@ -371,13 +383,39 @@
         <pathelement path="${sdk.test.classes.dir}" />
       </classpath>
     </java>
+    <echo message="Running the TestHITProperties test suite..." />
+    <java dir="${sdk.test.classes.dir}" classname="com.amazonaws.mturk.test.TestHITProperties" fork="true">
+      <classpath>
+        <path refid="test.classpath" />
+        <pathelement location="${lib.dir}/${sdk.name}-test.jar" />
+        <pathelement path="${sdk.test.classes.dir}" />
+      </classpath>
+    </java>
+    <echo message="Running the TestHITQuestion test suite..." />
+    <java dir="${sdk.test.classes.dir}" classname="com.amazonaws.mturk.test.TestHITQuestion" fork="true">
+      <classpath>
+        <path refid="test.classpath" />
+        <pathelement location="${lib.dir}/${sdk.name}-test.jar" />
+        <pathelement path="${sdk.test.classes.dir}" />
+      </classpath>
+    </java>
+    <echo message="Running the TestFileUtil test suite..." />
+    <java dir="${sdk.test.classes.dir}" classname="com.amazonaws.mturk.test.TestFileUtil" fork="true">
+      <classpath>
+        <path refid="test.classpath" />
+        <pathelement location="${lib.dir}/${sdk.name}-test.jar" />
+        <pathelement path="${sdk.test.classes.dir}" />
+      </classpath>
+    </java>
   </target>
 
-  <target name="doc" description="Generates Javadoc" >
+  <target name="doc" depends="wsdl-jar,dataschema-jar" description="Generates Javadoc" >
     <mkdir dir="${doc.dir}" />
     <javadoc destdir="${doc.dir}" access="protected" classpathref="runtime.classpath">
       <fileset dir="${sdk.src.dir}" includes="**/*.java" />
       <fileset dir="${sample.src.dir}" includes="**/*.java" />
+      <fileset dir="${stub.src.dir}" includes="**/*.java" />
+      <fileset dir="${dataschema.src.dir}" includes="**/*.java" />
     </javadoc>
   </target>
 
@@ -471,6 +509,8 @@
     <echo message="Run 'ant reviewerForHIT -DhitID=[the HIT ID]' to run the Reviewer application." />
     <echo message="Run 'ant reviewerForHITFile -Dsuccess_file=[filename of .success file]' -Doutput_file=[filename of output file] to run the Reviewer application." />
     <echo message="Run 'ant filter' to run the MyHIT application which uses the AppendKeywordFilter." />
+    <echo message="Run 'ant review-policy' to run the ReviewPolicy application." />
+    <echo message="Run 'ant review-policy-results -DhitID=[the HIT ID]' to get review results." />
     <echo message="Run 'ant compile-sample' to compile the sample code." />
     <echo message="Run 'ant jar' to build the sdk sources and create jar." />
     <echo message="Run 'ant run-test' to run the junit tests for the sdk." />
@@ -479,6 +519,9 @@
     <echo message="Run 'ant unix' to create the gzip distributable of the sdk for unix." />
     <echo message="Run 'ant windows' to create the zip distributable of the sdk for windows." />
   </target>
+<zip destfile="output.jar">
+    <zipgroupfileset dir="lib" includes="*.jar"/>
+</zip>
 
 </project>
 

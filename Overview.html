@@ -112,7 +112,7 @@ body, div, p, td, th {
   </ul>
 </p>
 
-Before getting started, you should first review the getting started and developer guides for the Amazon Mechanical Turk web service APIs <a href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=671&categoryID=28">here</a>.  They provide excellent background information on the various concepts of Amazon Mechanical Turk.
+Before getting started, you should first review the getting started and developer guides for the Amazon Mechanical Turk web service APIs <a href="http://aws.amazon.com/documentation/mturk/">here</a>.  They provide excellent background information on the various concepts of Amazon Mechanical Turk.
 
 <h2>Table of Contents</h2>
 <ol>
@@ -126,6 +126,7 @@ Before getting started, you should first review the getting started and develope
   <li><a href="#websitecategorization">Running the Web Site Categorization Sample Application</a></li>
   <li><a href="#reviewer">Running the Reviewer Sample Application</a></li>
   <li><a href="#filter">Running the Keyword Filter Sample Application</a></li>
+  <li><a href="#reviewpolicy">Running the Review Policy Sample Application</a></li>
   <li><a href="#logging">Logging and Debugging</a></li>
   <li><a href="#developingwithsdk">Development Resources Included in the SDK</a></li>
   <li><a href="#portability">Portability of convenience files</a></li>
@@ -421,6 +422,128 @@ filter:<br/>
 </ol>
 Your HIT has been successfully loaded. You can visit the Amazon Mechanical Turk Developer Sandbox worker site with the URL provided in the output to view the HIT.  In order to see the keyword that has been appended to the HIT by the filter, you will need to view your HIT from the main site and not in the preview mode.
 
+<a name="reviewpolicy"/>
+<h2>Running the Review Policy Sample Application</h2>
+<p>With this sample application, you can create a HIT with review policies, which sets up automatic approving/rejecting of your HIT.</p>
+
+<p>The following concepts are covered:
+  <ul>
+    <li>Creating HITs with review policies</li>
+    <li>Accessing results of HITs with review policies</li>
+    <li>Accessing worker statistics related to review policies</li>
+  </ul>
+</p>
+
+<p>The sample is located here:<br/>
+  <span class="programlisting">[SDK Installation Directory]\samples\review_policy\ReviewPolicyExample.java</span>
+</p>
+
+<p>To run this sample and create a HIT using review policies:
+  <ol>
+    <li>Navigate to your SDK installation directory and run the following command: <span class="programlisting">ant review-policy</span></li>
+  </ol>
+</p>
+
+<p>You should see the following output:<br/>
+  <span class="programlisting">
+   &nbsp;&nbsp;&nbsp;&nbsp;[echo] Running the review-policy sample application...<br/>
+   &nbsp;&nbsp;&nbsp;&nbsp;[java] Got account balance: 10000.00<br/>
+   &nbsp;&nbsp;&nbsp;&nbsp;[java] Created HIT: 2HAPW1INMHGY298FEZ26EFMFJV15IA<br/>
+   &nbsp;&nbsp;&nbsp;&nbsp;[java] You may see your HIT with HITTypeId '2YBT3HVWAVKII7CVHRS75Z99QJ4FNB' here: <br/>
+   &nbsp;&nbsp;&nbsp;&nbsp;[java] http://workersandbox.mturk.com/mturk/preview?groupId=2YBT3HVWAVKII7CVHRS75Z99QJ4FNB<br/>
+   &nbsp;&nbsp;&nbsp;&nbsp;[java] Success.
+  </span>
+</p>
+
+<p>Once workers have worked on your HIT, you can get results from your review policies by running the following command: <span class="programlisting">ant review-policy-results -DhitID=[the ID of the review policy HIT]</span></p>
+
+<p>You should see the following output:<br/>
+  <span class="programlisting">
+    &nbsp;&nbsp;&nbsp;&nbsp;[echo] Running the review-policy sample application...<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Getting review policy results for HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA...<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Results for policy ScoreMyKnownAnswers/2011-09-01:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: KnownAnswerScore is 100<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: AgreedWithKnownAnswer for q1 is true<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: AgreedWithKnownAnswer for q2 is true<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: KnownAnswerScore is 50<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: AgreedWithKnownAnswer for q1 is true<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: AgreedWithKnownAnswer for q2 is false<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: KnownAnswerScore is 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: AgreedWithKnownAnswer for q1 is false<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: AgreedWithKnownAnswer for q2 is false<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Actions for policy ScoreMyKnownAnswers/2011-09-01:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action review on Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ KnownAnswerScore is 100%. Assignment approved as a result.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action approve on Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: null<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action review on Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP KnownAnswerScore is 50%.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action review on Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU KnownAnswerScore is 0%. Assignment rejected as a result. HIT extended as a result.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action reject on Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: null<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action extend on HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Not extending beyond 3 assignments<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Results for policy SimplePlurality/2011-09-01:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: PluralityAnswersCorrect is 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: PluralityAnswersIncorrect is 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: WorkerAgreementScore is 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA: HitAgreementScore is 100<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA: AgreedAnswer for q3 is blue<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA: AgreedAnswerFound for q3 is true<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA: AnswerAgreementScore for q3 is 67<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: PluralityAnswersCorrect is 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: PluralityAnswersIncorrect is 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: WorkerAgreementScore is 100<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: PluralityAnswersCorrect is 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: PluralityAnswersIncorrect is 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: WorkerAgreementScore is 100<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Actions for policy SimplePlurality/2011-09-01:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action review on HIT 2HAPW1INMHGY298FEZ26EFMFJV15IA: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Evaluated 1 question and found agreement on 100%<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action approve on Assignment 2N867D1X3V0FW510BRAE4M7PKZFJCJ: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Already approved<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action approve on Assignment 2PVQ0JG5TYMNO1NNVY69VSSHXG7GKP: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: null<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - Action reject on Assignment 2DO5XH0JPPSIEPNQGAJPA5KLML2GMU: Succeeded<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java]   Result: Already rejected<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Review-policy-related statistics follow.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] These statistics are life-to-date counts for each worker who worked on this HIT.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] These counts only include work done for the requester of the HIT.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Worker A441FFGFFY6AT:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersCorrect: 2<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersIncorrect: 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersEvaluated: 2<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - PercentKnownAnswersCorrect: 100.0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersCorrect: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersIncorrect: 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersEvaluated: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - PercentPluralityAnswersCorrect: 100.0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Worker ASWPTKRKW9I84:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersCorrect: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersIncorrect: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersEvaluated: 2<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - PercentKnownAnswersCorrect: 50.0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersCorrect: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersIncorrect: 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersEvaluated: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - PercentPluralityAnswersCorrect: 100.0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] Worker A2V05HMUI6252B:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersCorrect: 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersIncorrect: 2<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberKnownAnswersEvaluated: 2<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - PercentKnownAnswersCorrect: 0.0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersCorrect: 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersIncorrect: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - NumberPluralityAnswersEvaluated: 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;[java] - PercentPluralityAnswersCorrect: 0.0
+  </span>
+</p>
 
 <a name="logging"/>
 <h2>Logging and Debugging</h2>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import com.amazonaws.mturk.util.PropertiesClientConfig;
 
 public class MyHIT {
     
-    //  Defining the atributes of the HIT to be created
+    //  Defining the attributes of the HIT to be created
     private String title = "Answer the question";
     private String description = 
       "This is a HIT created by the Mechanical Turk SDK.  Please answer the provided question.";

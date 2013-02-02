@@ -1,6 +1,6 @@
 package com.amazonaws.mturk.test;
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,15 @@ package com.amazonaws.mturk.test;
  */ 
 
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import junit.textui.TestRunner;
 
-import com.amazonaws.mturk.addon.HITDataBuffer;
 import com.amazonaws.mturk.addon.HITProperties;
 import com.amazonaws.mturk.addon.HITQuestion;
+import com.amazonaws.mturk.addon.QAPValidator;
 import com.amazonaws.mturk.dataschema.QuestionFormAnswers;
 import com.amazonaws.mturk.dataschema.QuestionFormAnswersType;
 import com.amazonaws.mturk.requester.HIT;
@@ -39,7 +41,7 @@ public class TestRequesterService extends TestBase {
     List<QuestionFormAnswersType.AnswerType> answers = 
       (List<QuestionFormAnswersType.AnswerType>) qfa.getAnswer();
     
-    //TestRunner.run(TestRequesterService.class);
+    TestRunner.run(TestRequesterService.class);
   }
 
   public TestRequesterService(String arg0) {
@@ -137,6 +139,31 @@ public class TestRequesterService extends TestBase {
     assertEquals( hits.length, 0 );
   }
   
+  public void testCreateHITWithInvalidHitLayoutId() throws ServiceException {
+    // We only test a failure case here, because testing it with a real
+    // HitLayoutId would require the user to manually get a valid HitLayoutId
+    // from the requester UI.
+    String layoutId = "INVALIDHITLAYOUTID";
+    
+    Map<String,String> layoutParameters = new HashMap<String,String>();
+    layoutParameters.put("param1", "a test value");
+    
+    try {
+      service.createHIT(
+          defaultHITTitle + unique,
+          defaultHITDescription,
+          defaultReward,
+          defaultMaxAssignments,
+          layoutId,
+          layoutParameters);
+      fail("createHIT succeeded, despite having an invalid HIT layout ID");
+    } catch (ServiceException e) {
+      // expected
+      assertContains("Cause of createHIT failure was not an invalid HIT layout ID",
+          "HITLayout " + layoutId + " does not exist", e.getMessage());
+    }
+  }
+  
   public void testUpdateHITTextAttributes() throws ServiceException {
     HIT hit = service.createHIT(defaultHITTitle + unique, defaultHITDescription, defaultReward, 
         RequesterService.getBasicFreeTextQuestion(defaultQuestion), 
@@ -193,6 +220,25 @@ public class TestRequesterService extends TestBase {
     }
     catch (ValidationException e) {
       // Expected exception
+    }
+  }
+  
+  public void testValidateHTMLQuestion() throws Exception {
+    // Note that the SDK does not validate the HTML CDATA;
+    // it only validates the surrounding XML.
+    QAPValidator.validateFile(defaultHTMLQuestionFileName);
+  }
+  
+  public void testValidateInvalidHTMLQuestion() throws Exception {
+    // HTMLQuestion has invalid FrameHeight
+    try {
+      QAPValidator.validateFile(defaultInvalidHTMLQuestionFileName);
+      fail("Expected ValidationException when previewing a HIT with an invalid HTMLQuestion");
+    } catch (ValidationException e) {
+      // Expected exception
+      assertContains("ValidationFailure was not caused by an invalid frame height.",
+          "'I am not a number; I am a free man!' is not a valid value for 'integer'",
+          e.getMessage());
     }
   }
   

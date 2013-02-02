@@ -2,7 +2,9 @@
 <html xmlns="http://www.w3.org/1999/xhtml"><head>
 
 
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"><title>Read Me for Amazon Mechanical Turk SDK for Java v1.2.2</title><!--
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/>
+<title>Read Me for Amazon Mechanical Turk SDK for Java v1.6.2</title>
+<!--
 These style should be copied directly from the common CSS.
 We include them in the document to make distributing files
 easier.
@@ -102,7 +104,7 @@ body, div, p, td, th {
   margin-right: 20px;
 }
 </style></head><body>
-<h1>Read Me for the Amazon Mechanical Turk SDK for Java v1.2.2</h1>
+<h1>Read Me for the Amazon Mechanical Turk SDK for Java v1.6.0</h1>
 <p>
   The Amazon Mechanical Turk SDK for Java is a set of libraries and tools designed to make it easier for you to build solutions leveraging Amazon Mechanical Turk.  The goals of the SDK are:
   <ul>
@@ -112,9 +114,9 @@ body, div, p, td, th {
   </ul>
 </p>
 <h2>Version Information</h2>
-This distributable contains the Amazon Mechanical Turk SDK for Java version <strong>1.2.2</strong>.<p/>
-The SDK is compatible with Amazon Mechanical Turk web service version <strong>2007-06-21</strong>.<p/>
-The Amazon Mechanical Turk team would appreciate any comments and feedback on the SDK.</p>
+This distributable contains the Amazon Mechanical Turk SDK for Java version <strong>1.6.2</strong>.<br/>
+The SDK is compatible with Amazon Mechanical Turk web service version <strong>2012-03-25</strong>.<br/>
+The Amazon Mechanical Turk team would appreciate any comments and feedback on the SDK.<br/>
 Please submit issues on the SourceForge <a href="http://sourceforge.net/projects/mturksdk-java" target="_blank">project</a>.
 
 <h2>SDK Contents</h2>
@@ -128,6 +130,27 @@ The SDK distributable contains the following content:
 </ul>
 
 <h2>Revision History</h2>
+
+<h3>Version 1.6.2 - August 21, 2012</h3>
+<ul>
+  <li>Fixed: Incorrect match for mailto: uri in FormattedContent validation</li>
+  <li>Fixed: Set correct sdk version in request headers</li>
+</ul>
+
+<h3>Version 1.6.0 - April 19, 2012</h3>
+<ul>
+  <li>New Feature: Added support for creating HITs using HIT Layouts</li>
+  <li>New Feature: Updated to the 2012-03-25 WSDL version</li>
+  <li>Fixed: URLs that weren't updated to HTTPS in the 1.5.0 release</li>
+</ul>
+
+<h3>Version 1.5.0 - December 1, 2011</h3>
+<ul>
+  <li>New Feature: Added support for creating and managing HITs with HIT Review Policies</li>
+  <li>New Feature: Updated to the 2011-10-01 WSDL version</li>
+  <li>Fixed: Miscellaneous Unicode issues</li>
+  <li>Fixed: Connect using HTTPS by default</li>
+</ul>
 
 <h3>Version 1.2.2 - April 24, 2008</h3>
 <ul>
@@ -147,12 +170,12 @@ The SDK distributable contains the following content:
   <li>Fixed: 1836109 - The generated .success file is a Unix file even in Windows.</li>
   <li>Fixed: 1836111 - GetResults has missing columns when value is NULL.</li>
   <li>Fixed: 1836114 - GetResults: Retrieved HIT number is misleading.</li> 
+</ul>
 <p>
 <strong>NOTE:</strong> The default delimiter is now tab.  We reverted the change in the last version which made the default delimiter to be comma.<br/>
 <strong>NOTE:</strong> We migrated to using JaxMe 2 instead of JAXB.  As a result, the auto-generated class names in aws-mturk-dataschema.jar are slightly different than the previous version.  If your application directly depends on the classes in aws-mturk-dataschema.jar, you'll need to update your code due to these changes.<br/>
 <strong>NOTE:</strong> We're no longer providing junit as a part of the distributable.  This means that you will have to download it for tests.  This version of the SDK was built using junit 4.4. See the <a href="Overview.html#developingwithsdk" target="_blank">Overview</a> for more information on using junit. <br/>
-
-</ul>
+</p>
 
 <h3>Version 1.2.0 - October 12th, 2007</h3>
 <ul>
@@ -184,7 +207,7 @@ The SDK distributable contains the following content:
 <h3>Version 1.0.1 - June 15th, 2007</h3>
 <ul>
   <li>New Feature: When retrieving results, the data is streamed directly to the Results file instead of being cached in memory and written at once.  Avoids out of memory errors when retrieving large data sets.</li>
-  <li>New Feature: The generated Results file now orders the question/answer pairs based on the order they appear in the QuestionForm instead of being ordered alphabetically.
+  <li>New Feature: The generated Results file now orders the question/answer pairs based on the order they appear in the QuestionForm instead of being ordered alphabetically.</li>
   <li>New Feature: Progress indicator when results are being retrieved from the system.</li>
   <li>Fixed: Batch operations halt when the first error is encountered instead of skipping and continuing.</li>
   <li>Fixed: Removed some extraneous files from the distribution.</li>
@@ -205,7 +228,6 @@ The SDK distributable contains the following content:
   <li>Fixed: The .failure file is output if there are no failures.  It should only exist if there are errors.</li>
 </ul>
 
-</ul>
 <h3>Version 0.9.0 Beta - March 27th, 2007</h3>
 <ul>
   <li>Initial release</li>

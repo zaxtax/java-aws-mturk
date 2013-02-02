@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -55,7 +54,7 @@ public class FileUtil {
   }
 
   public String getString() throws IOException {
-    BufferedReader br = new BufferedReader(new FileReader(this.fileName));
+    BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), "UTF-8"));
     StringBuilder sb = new StringBuilder();
     try {
       String newline = System.getProperty("line.separator");

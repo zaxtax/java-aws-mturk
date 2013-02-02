@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ public class QAPValidator {
   public final static String QUESTION_FORM_XSD = "QuestionForm.xsd";
   public final static String FORMATTED_CONTENT_XSD = "FormattedContentXHTMLSubset.xsd";
   public final static String EXTERNAL_QUESTION_XSD = "ExternalQuestion.xsd";
+  public final static String HTML_QUESTION_XSD = "HTMLQuestion.xsd";
 
   public static void validate(String question) throws ValidationException, IOException {
     validate(question, false, QUESTION_FORM_XSD, false);
@@ -69,6 +70,7 @@ public class QAPValidator {
     try {
       // Get a parser capable of parsing vanilla XML into a DOM tree
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+      factory.setNamespaceAware(true);
       DocumentBuilder parser = factory.newDocumentBuilder();
 
       // parse the JNLP file on the command line purely as XML and get a DOM
@@ -103,6 +105,9 @@ public class QAPValidator {
         schema = QUESTION_FORM_XSD;
       } else if (docElemName == "ExternalQuestion") {
         schema = EXTERNAL_QUESTION_XSD;
+        skipFormattedContent = true;
+      } else if (docElemName == "HTMLQuestion") {
+        schema = HTML_QUESTION_XSD;
         skipFormattedContent = true;
       } else {
         throw new SAXException("Root element is not valid Question "

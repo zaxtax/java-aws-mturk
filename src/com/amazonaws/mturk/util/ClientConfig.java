@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,15 +32,15 @@ public class ClientConfig {
   //-------------------------------------------------------------
 
   public final static String SANDBOX_SERVICE_URL = 
-      "http://mechanicalturk.sandbox.amazonaws.com/?Service=AWSMechanicalTurkRequester";
+      "https://mechanicalturk.sandbox.amazonaws.com/?Service=AWSMechanicalTurkRequester";
   public final static String PRODUCTION_SERVICE_URL = 
-      "http://mechanicalturk.amazonaws.com/?Service=AWSMechanicalTurkRequester";
+      "https://mechanicalturk.amazonaws.com/?Service=AWSMechanicalTurkRequester";
   
-  protected final static String PROD_WORKER_WEBSITE_URL = "http://www.mturk.com";
-  protected final static String SANDBOX_WORKER_WEBSITE_URL = "http://workersandbox.mturk.com";
+  protected final static String PROD_WORKER_WEBSITE_URL = "https://www.mturk.com";
+  protected final static String SANDBOX_WORKER_WEBSITE_URL = "https://workersandbox.mturk.com";
   
-  protected final static String PROD_REQUESTER_WEBSITE_URL = "http://requester.mturk.com";
-  protected final static String SANDBOX_REQUESTER_WEBSITE_URL = "http://requestersandbox.mturk.com";
+  protected final static String PROD_REQUESTER_WEBSITE_URL = "https://requester.mturk.com";
+  protected final static String SANDBOX_REQUESTER_WEBSITE_URL = "https://requestersandbox.mturk.com";
   
   //-------------------------------------------------------------
   // Variables - Private

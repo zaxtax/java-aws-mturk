@@ -1,6 +1,6 @@
 package com.amazonaws.mturk.test;
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,12 +89,16 @@ public abstract class TestBase extends TestCase {
   protected static String defaultInvalidFormattedContentQuestionFileName;
   protected static String defaultExternalQuestionFileName;
   protected static String defaultInvalidExternalQuestionFileName;
+  protected static String defaultHTMLQuestionFileName;
+  protected static String defaultInvalidHTMLQuestionFileName;
   protected static String defaultScriptFormattedContentQuestionFileName;
   protected static String defaultPreviewFileName;
   protected static String defaultInputFileName;
   protected static String defaultNoHeaderInputFileName;
   protected static String defaultOutputFileName;
   protected static String defaultPlaceholder;
+  protected static String defaultUTF8PropertiesFileName;
+  protected static String defaultUTF8QuestionFileName;
   
   protected static ArrayList<String[]> defaultHITInputData;
   protected static String[] defaultHITInputFields;
@@ -191,6 +195,10 @@ public abstract class TestBase extends TestCase {
     defaultScriptFormattedContentQuestionFileName = defaultTestDir + "/testScriptFormattedContent.txt";
     defaultExternalQuestionFileName = defaultTestDir + "/testExternalQuestion.txt";
     defaultInvalidExternalQuestionFileName = defaultTestDir + "/testInvalidExternalQuestion.txt";
+    defaultHTMLQuestionFileName = defaultTestDir + "/testHTMLQuestion.txt";
+    defaultInvalidHTMLQuestionFileName = defaultTestDir + "/testInvalidHTMLQuestion.txt";
+    defaultUTF8PropertiesFileName = defaultTestDir + "/testUTF8.properties";
+    defaultUTF8QuestionFileName = defaultTestDir + "/testUTF8Question.xml";
     
     Properties props = new Properties();
     props.setProperty(HITProperties.HITField.Title.getFieldName(), defaultHITTitle);
@@ -314,4 +322,9 @@ public abstract class TestBase extends TestCase {
     return qualType;
   }
   
+  protected void assertContains(String message, String substring, String full) {
+    assertTrue(
+        String.format("%s expected substring:<%s> but was:<%s>", message, substring, full),
+        full.contains(substring));
+  }
 }

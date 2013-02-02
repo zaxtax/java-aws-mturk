@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,11 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
@@ -65,6 +67,7 @@ import com.amazonaws.mturk.requester.GetQualificationsForQualificationTypeResult
 import com.amazonaws.mturk.requester.GetReviewableHITsResult;
 import com.amazonaws.mturk.requester.GetReviewableHITsSortProperty;
 import com.amazonaws.mturk.requester.HIT;
+import com.amazonaws.mturk.requester.HITLayoutParameter;
 import com.amazonaws.mturk.requester.NotificationSpecification;
 import com.amazonaws.mturk.requester.NotificationTransport;
 import com.amazonaws.mturk.requester.Qualification;
@@ -85,8 +88,19 @@ import com.amazonaws.mturk.util.FileUtil;
 import com.amazonaws.mturk.util.VelocityUtil;
 
 /**
- * The RequesterService class provides a set of simplified APIs and convenience methods.
- * It extends the RequesterServiceRaw class.
+ * The RequesterService class provides a set of APIs and convenience methods to perform Amazon Mechanical
+ * Turk operations. It extends the RequesterServiceRaw class.
+ * <p>
+ * Most methods throw a ServiceException. This is a generic exception that can occur for many reasons, 
+ * including:
+ *  <ul>
+ *    <li>Invalid credentials</li>
+ *    <li>Insufficient funds</li>
+ *    <li>Invalid parameter</li>
+ *    <li>Internal service exception</li>
+ *    <li>Network problems</li>
+ *  </ul>
+ * You should handle all situations in your application. 
  */
 public class RequesterService extends RequesterServiceRaw {
 
@@ -94,22 +108,91 @@ public class RequesterService extends RequesterServiceRaw {
   // Constants
   //-------------------------------------------------------------
 
+  /**
+   * The page number of the results set. Default is 1. 
+   */
   public static final int DEFAULT_PAGE_NUM = 1;
+  
+  /**
+   * The number of returned results per page. Default is 10.
+   */  
   public static final int DEFAULT_PAGE_SIZE = 10;
+  
+  /**
+   * The direction of the sort. Default is Ascending.
+   */
   public static final SortDirection DEFAULT_SORT_DIRECTION = SortDirection.Ascending;
+  
+  /**
+   * Specifies whether to load all HITs in a file. Default is no. Use this as the 
+   * numHITToLoad parameter of createHITs if you want to load all the HITs in the 
+   * input file.
+   */
   public static final int LOAD_ALL = -1;
   private static final int MAX_BATCH = 500;     // maximum batch size for batch chunk
 
+  /**
+   * The amount of time in seconds that the Worker has to complete the 
+   * assignment after accepting it. Default is 3600 (1 hour).
+   */
   public static final long DEFAULT_ASSIGNMENT_DURATION_IN_SECONDS = (long) 60 * 60; // 1 hour
+  
+  /**
+   * The amount of time in seconds before HITs are automatically approved. Default 
+   * is 1296000 (15 days).
+   */
   public static final long DEFAULT_AUTO_APPROVAL_DELAY_IN_SECONDS = (long) 60 * 60 * 24 * 15; // 15 days
+  
+  /**
+   * The amount of time in seconds that the HIT can be available for Workers to accept. 
+   * Default is 259200 (3 days).
+   */
   public static final long DEFAULT_LIFETIME_IN_SECONDS = (long) 60 * 60 * 24 * 3; // 3 days
 
   // QualificationTypeIds for System Qualifications
+  /**
+   * Qualification type Id for the Worker_PercentAssignmentsAbandoned system qualification.
+   * It specifies the percentage of assignments the Worker has abandoned. Use this Id when you
+   * create HITs with system qualifications. 
+   */
   public static final String ABANDONMENT_RATE_QUALIFICATION_TYPE_ID = "00000000000000000070";
+  
+  /**
+   * Qualification type Id for the Worker_PercentAssignmentsApproved system qualification.
+   * It specifies the percentage of assignments the Worker has submitted that were subsequently 
+   * approved by the Requester, over all assignments the Worker has submitted. Use this Id when 
+   * you create HITs with system qualifications.   
+   */
   public static final String APPROVAL_RATE_QUALIFICATION_TYPE_ID = "000000000000000000L0";
+  
+  /**
+   * Qualification type Id for the Worker_PercentAssignmentsRejected system qualification.
+   * It specifies the percentage of assignments the Worker has submitted that were subsequently 
+   * rejected by the Requester, over all assignments the Worker has submitted. Use this Id when 
+   * you create HITs with system qualifications. 
+   */
   public static final String REJECTION_RATE_QUALIFICATION_TYPE_ID = "000000000000000000S0";
+  
+  /**
+   * Qualification type Id for the Worker_PercentAssignmentsReturned system qualification.
+   * It specifies percentage of assignments the Worker has returned, over all 
+   * assignments the Worker has accepted. Use this Id when you create HITs with system 
+   * qualifications.
+   */
   public static final String RETURN_RATE_QUALIFICATION_TYPE_ID = "000000000000000000E0";
+  
+  /**
+   * Qualification type Id for the Worker_PercentAssignmentsSubmitted  system qualification.
+   * It specifies the percentage of assignments the Worker has submitted, over all assignments 
+   * the Worker has accepted. Use this Id when you create HITs with system qualifications.   
+   */
   public static final String SUBMISSION_RATE_QUALIFICATION_TYPE_ID = "00000000000000000000";
+  
+  /**
+   * Qualification type Id for the Worker_Locale system qualification.
+   * It specifies the location of the Worker from the Worker's mailing address. Use this 
+   * Id when you create HITs with system qualifications.
+   */
   public static final String LOCALE_QUALIFICATION_TYPE_ID = "00000000000000000071";
 
   private static final String DATASCHEMA_PACKAGE_PREFIX = "com.amazonaws.mturk.dataschema";
@@ -149,7 +232,11 @@ public class RequesterService extends RequesterServiceRaw {
   public RequesterService() {
     super();
   }
-
+  
+  /**
+   * Creates a new instance of this class using the configuration information 
+   * from the ClientConfig class.
+   */
   public RequesterService(ClientConfig config) {
     super(config);
   }
@@ -160,16 +247,30 @@ public class RequesterService extends RequesterServiceRaw {
   //-------------------------------------------------------------
 
   /**
-   * Creates a HIT using default values for the HIT properties not given as parameters.
-   * The request uses the default responseGroup of "Minimal".
+   * Creates a HIT, using defaults for the HIT properties not given as 
+   * parameters.
+   * <p>
+   * Default values: 
+   * <ul>
+   *  <li>ResponseGroup: Minimal</li>
+   *  <li>LifetimeInSeconds:  3 days</li>
+   *  <li>AssignmentDurationInSeconds: 1 hour</li>
+   *  <li>AutoApprovalDelayInSeconds:  15 days</li>
+   *  <li>Keywords: null</li>
+   *  <li>QualificationRequirement: null</li>
+   * </ul>
    * 
-   * @param title
-   * @param description
-   * @param reward
-   * @param question
-   * @param maxAssignments
-   * @return The created HIT
-   * @throws ServiceException
+   * @param title             the title of the HIT. The title appears in search results
+   *                          and everywhere the HIT is mentioned.
+   * @param description       the description of the HIT. The description should include
+   *                          enough information for a Worker to evaluate the HIT before
+   *                          accepting it.
+   * @param reward            the amount to pay for the completed HIT
+   * @param question          the data the Worker uses to produce the results
+   * @param maxAssignments    the number of times the HIT can be accepted and completed
+   *                          before it becomes unavailable
+   * @return the created HIT  
+   * @throws ServiceException 
    */
   public HIT createHIT(String title, String description, double reward, String question, 
       int maxAssignments) throws ServiceException {
@@ -182,18 +283,59 @@ public class RequesterService extends RequesterServiceRaw {
         false
     );
   }
-
+  
+  public HIT createHIT(String title, String description, double reward, int maxAssignments,
+      String layoutId, Map<String,String> layoutParameters) {
+    Set<HITLayoutParameter> parameterObjects = new HashSet<HITLayoutParameter>();
+    for (String key : layoutParameters.keySet()) {
+      parameterObjects.add(new HITLayoutParameter(key, layoutParameters.get(key)));
+    }
+    
+    return super.createHIT(
+        null, // hitTypeId
+        title,
+        description,
+        null, // keywords
+        reward,
+        DEFAULT_ASSIGNMENT_DURATION_IN_SECONDS,
+        DEFAULT_AUTO_APPROVAL_DELAY_IN_SECONDS,
+        DEFAULT_LIFETIME_IN_SECONDS,
+        maxAssignments,
+        null, // requesterAnnotation
+        null, // qualificationRequirements
+        null, // responseGroup
+        null, // uniqueRequestToken
+        null, // assignmentReviewPolicy
+        null, // hitReviewPolicy
+        layoutId,
+        (HITLayoutParameter[]) parameterObjects.toArray(new HITLayoutParameter[0]));
+  }
+  
   /**
-   * Creates a HIT using defaults for the HIT properties not given as parameters.
-   * The request uses either the default or full responseGroup.
-   * 
-   * @param title
-   * @param description
-   * @param reward
-   * @param question
-   * @param maxAssignments
-   * @param getFullResponse
-   * @return The created HIT
+   * Creates a HIT using defaults for the HIT properties not given as 
+   * parameters.
+   * <p>
+   * Default values: 
+   * <ul>
+   *  <li>LifetimeInSeconds:  3 days</li>
+   *  <li>AssignmentDurationInSeconds: 1 hour</li>
+   *  <li>AutoApprovalDelayInSeconds:  15 days</li>
+   *  <li>Keywords: null</li>
+   *  <li>QualificationRequirement: null</li>
+   * </ul>
+   *                 
+   * @param title              the title of the HIT. The title appears in search results
+   *                           and everywhere the HIT is mentioned.
+   * @param description        the description of the HIT. The description should include
+   *                           enough information for a Worker to evaluate the HIT before
+   *                           accepting it.
+   * @param reward             the amount to pay for the completed HIT
+   * @param question           the data the Worker uses to produce the results
+   * @param maxAssignments     the number of times the HIT can be accepted and completed
+   *                           before it becomes unavailable
+   * @param getFullResponse    if true, all information about the HIT is returned. If false, only 
+   *                           HIT Id and HIT type Id are returned. 
+   * @return the created HIT
    * @throws ServiceException
    */
   public HIT createHIT(String title, String description, double reward, String question, 
@@ -219,18 +361,33 @@ public class RequesterService extends RequesterServiceRaw {
         maxAssignments,
         null, //requesterAnnotation
         null, // qualificationRequirements
-        responseGroup
+        responseGroup,
+        null, // uniqueRequesterToken
+        null, // assignmentReviewPolicy
+        null  // hitReviewPolicy
     );
   }
 
   /**
-   * Updates a HIT using defaults for the HIT properties not given as parameters.
+   * Updates a HIT with new title, description, keywords, and reward. If new values are 
+   * not specified, the values from the original HIT are used. The following default values 
+   * are used:
+   * <ul>
+   *  <li>AssignmentDurationInSeconds: 1 hour</li>
+   *  <li>AutoApprovalDelayInSeconds:  15 days</li>
+   *  <li>QualificationRequirement: null</li>
+   * </ul>
    * 
-   * @param hitId
-   * @param title - if null, the HIT's current title is used
-   * @param description - if null, the HIT's current description is used
-   * @param reward - if null, the HIT's current reward is used
-   * @return The new HITType Id
+   * @param hitId        the Id of the HIT to update
+   * @param title        the title of the updated HIT. If null, the current title 
+   *                     of the HIT is used.
+   * @param description  the description of the updated HIT. If null, the current description 
+   *                     of the HIT is used.
+   * @param keywords     one or more words or phrases to describe the updated HIT. If null, 
+   *                     the current keywords are used.                  
+   * @param reward       the amount to pay for the updated HIT when completed. If null, the 
+   *                     the current reward of the HIT is used.
+   * @return the new HITType Id
    * @throws ServiceException
    */
   public String updateHIT(String hitId, String title, String description, String keywords,
@@ -263,11 +420,11 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Updates HITs in bulk.
+   * Updates multiple HITs to a new HIT type.
    * 
-   * @param input
-   * @param newHITTypeId
-   * @return Array of hitIds that were successfully updated
+   * @param hitIds         an array of Ids of HITs to update
+   * @param newHITTypeId   the new HITTypeId 
+   * @return array of hitIds that were successfully updated
    * @throws ServiceException
    */
   public String[] updateHITs(String[] hitIds, String newHITTypeId) throws ServiceException {
@@ -306,6 +463,20 @@ public class RequesterService extends RequesterServiceRaw {
     return successes.toArray(new String[successes.size()]);
   }
 
+  /**
+   * Deletes multiple HITs at one time.
+   * 
+   * @param hitIds         an array of Ids of HITs to delete
+   * @param approve	       specifies whether to approve assignments that have been submitted and have
+   *                       not been approved or rejected. Assignments that are in the review or reviewing 
+   *                       states cannot be deleted. 
+   * @param expire         specifies whether to expire any HITs that are still available to Workers.
+   *                       Live HITs cannot be deleted.
+   * @param callback       your callback method. This method is called asynchronously as each 
+   *                       HIT is successfully deleted. This method can track the progress of the batch so
+   *                       you do not exit the process until the batch is completed.                       
+   *                       
+   */
   public void deleteHITs(String[] hitIds, boolean approve, boolean expire, BatchItemCallback callback) {
     if (hitIds != null && hitIds.length > 0) {
 
@@ -348,6 +519,20 @@ public class RequesterService extends RequesterServiceRaw {
     }
   }
 
+  /**
+   * Increases the maximum number of assignments, or extends the expiration date, of multiple HITs.
+   * 
+   * @param hitIds                       an array of Ids of HITs to extend
+   * @param maxAssignmentsIncrement      the number of assignments by which to increment the HIT's 
+   *                                     MaxAssignments property.
+   * @param expirationIncrementInSeconds the amount of time by which to extend the expiration date, 
+   *                                     in seconds.
+   * @param callback                     your callback method. This method is called asynchronously as 
+   *                                     each HIT is successfully extended. This method can track the 
+   *                                     progress of the batch so you do not exit the process until the 
+   *                                     batch is completed.
+   * @throws ServiceException                                                                   
+   */
   public void extendHITs(String[] hitIds, Integer maxAssignmentsIncrement, Long expirationIncrementInSeconds,
       BatchItemCallback callback) 
   throws ServiceException { 
@@ -406,10 +591,12 @@ public class RequesterService extends RequesterServiceRaw {
   /***
    * Approves all assignments using the Axis worker thread pool.
    * 
-   * @param assignmentIds       Array of assignments to approve
-   * @param requesterFeedback   Feedback (comments) for the assignments
-   * @param defaultFeedback     Default feedback used when no requesterFeedback is specified for an assignment ID
-   * @param callback            Callback function for item results processing
+   * @param assignmentIds       array of assignments to approve
+   * @param requesterFeedback   feedback (comments) for the assignments
+   * @param defaultFeedback     feedback used when no requesterFeedback is specified for an assignment ID
+   * @param callback            your callback method. This method is called asynchronously as each HIT
+   *                            Assignment is successfully approved. This method can track the progress of 
+   *                            the batch so you do not exit the process until the batch is completed.
    * @throws ServiceException
    */
   public void approveAssignments(String[] assignmentIds, String[] requesterFeedback, String defaultFeedback,
@@ -482,10 +669,10 @@ public class RequesterService extends RequesterServiceRaw {
   }   
 
   /**
-   * Retrieves a HIT by HIT Id. The request uses full responseGroup.
-   * 
-   * @param hitId
-   * @return A HIT object
+   * Retrieves the properties for a HIT. 
+   *  
+   * @param hitId   the Id of the HIT to retrieve
+   * @return a HIT object
    * @throws ServiceException
    */
   public HIT getHIT(String hitId) throws ServiceException {
@@ -495,13 +682,17 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Creates a Qualification Type using default values for the Qualification Type properties 
-   * not given as parameters.
+   * Creates a Qualification type using default values for the properties 
+   * not given as parameters. This method and assigns Test, AnswerKey, 
+   * TestDurationInSeconds, AutoGranted, and AutoGrantedValue to null.
    * 
-   * @param name
-   * @param keywords
-   * @param description
-   * @return The created QualificationType
+   * @param name         the name of the new Qualification type
+   * @param keywords     one or more words or phrases that describe the Qualification type, 
+   *                     separated by commas. A type's Keywords make the type easier to find 
+   *                     using a search.
+   * @param description  a long description for the Qualification type. This description is
+   *                     displayed when a user examines a Qualification type. 
+   * @return the created QualificationType
    * @throws ServiceException
    */
   public QualificationType createQualificationType(String name, String keywords, String description) throws ServiceException {
@@ -517,13 +708,14 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Creates a Qualification Type with no test using default values for the Qualification Type 
-   * properties not given as parameters.
-   * 
-   * @param qualificationTypeId
-   * @param description
-   * @param status
-   * @return The updated QualificationType
+   * Modifies the description and the status of an existing Qualification type.  The 
+   * Qualification is updated to use default values for all other parameters.
+   *  
+   * @param qualificationTypeId  the Id of the Qualification type to update
+   * @param description          the new description of the Qualification type
+   * @param status               the new status of the Qualification type. This value can
+   *                             be either Active or Inactive. 
+   * @return the updated QualificationType
    * @throws ServiceException
    */
   public QualificationType updateQualificationType(String qualificationTypeId, String description, 
@@ -540,14 +732,14 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves workers' Qualifications found on the requested page for the given 
-   * Qualification Type.  The request uses the default responseGroup of "Minimal".
+   * Retrieves granted Qualifications found on the requested page for the given 
+   * Qualification Type.  
    * 
    * @param qualificationTypeId
    * @param pageNum
-   * @return An array of Qualifications
+   * @return an array of Qualifications
    * @throws ServiceException
-   * @deprecated
+   * @deprecated  
    */
   public Qualification[] getQualicationsForQualificationType(String qualificationTypeId, int pageNum) throws ServiceException {
     GetQualificationsForQualificationTypeResult result = 
@@ -560,12 +752,15 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves workers' Qualifications found on the requested page for the given 
-   * Qualification Type.  The request uses the default responseGroup of "Minimal".
+   * Retrieves all of the Qualifications granted to Workers for a given Qualification type. 
+   * Results are divided into numbered "pages," and a single page of results is returned. 
+   * This method uses the default page size of 10.
    * 
-   * @param qualificationTypeId
-   * @param pageNum
-   * @return An array of Qualifications
+   * @param qualificationTypeId    the ID of the Qualification type to return. 
+   * @param pageNum                the page of results to return. Once the Qualifications have been filtered, 
+   *                               sorted, and divided into pages, the page corresponding to pageNum is 
+   *                               returned as the results.
+   * @return an array of Qualifications
    * @throws ServiceException
    */
   public Qualification[] getQualificationsForQualificationType(String qualificationTypeId, int pageNum) throws ServiceException {
@@ -578,6 +773,12 @@ public class RequesterService extends RequesterServiceRaw {
     return result.getQualification();
   }  
 
+  /**
+   * Retrieves all of the Qualifications granted to Workers for a given Qualification type. 
+   * 
+   * @param qualificationTypeId    the ID of the Qualification type of the Qualifications to return.
+   * @return an array of Qualifications 
+   */
   public Qualification[] getAllQualificationsForQualificationType(String qualificationTypeId) throws Exception {
     List<Qualification> results = new ArrayList<Qualification>();
 
@@ -595,19 +796,20 @@ public class RequesterService extends RequesterServiceRaw {
       if (qualifications == null || qualifications.length < DEFAULT_PAGE_SIZE) {
         // Check if we're on the last page or not
         break;
+      } else {
+        pageNum++;
       }
-
     } while (true);
 
     return (Qualification[]) results.toArray(new Qualification[results.size()]);   
   }
 
   /**
-   * Retrieves workers' QualificationRequests found on the first page for the given 
-   * Qualification Type.  The results are sorted by SubmitTime.
+   * Retrieves the first page of Qualification requests for a 
+   * specified Qualification type.  The results are sorted by SubmitTime.
    * 
-   * @param qualificationTypeId
-   * @return An array of QualificationRequests
+   * @param qualificationTypeId   the Id of the Qualification type 
+   * @return an array of QualificationRequests
    * @throws ServiceException
    */
   public QualificationRequest[] getQualificationRequests(String qualificationTypeId) 
@@ -623,11 +825,11 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves all QualificationRequests for the given 
+   * Retrieves all requests for Qualifications of the given 
    * Qualification Type.  The results are sorted by SubmitTime.
    * 
-   * @param qualificationTypeId
-   * @return An array of QualificationRequests
+   * @param qualificationTypeId    the Id of the Qualification type.
+   * @return an array of QualificationRequests
    * @throws ServiceException
    */
   public QualificationRequest[] getAllQualificationRequests(String qualificationTypeId) throws ServiceException {
@@ -659,12 +861,13 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves workers' Assignments found on the requested page for the given HIT.  
-   * The request uses the default responseGroup of "Minimal".
-   * 
-   * @param hitId
-   * @param pageNum
-   * @return An array of Assignments
+   * Retrieves completed assignments found on the requested page for the given HIT.  
+   *  
+   * @param hitId            the Id of the HIT for which completed assignments are to be returned
+   * @param pageNum          The page of results to return. Once the assignments have been filtered, 
+   *                         sorted, and divided into pages, the page corresponding 
+   *                         to pageNum is returned as the results of the operation. 
+   * @return an array of Assignments
    * @throws ServiceException
    */
   public Assignment[] getAssignmentsForHIT(String hitId, int pageNum) throws ServiceException {
@@ -673,14 +876,20 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves workers' Assignments found on the first page for the given HIT.  
-   * The results are sorted by SubmitTime.  The request uses either the default 
-   * or full responseGroup.
+   * Retrieves completed assignments for a HIT.  You can get assignments for a HIT at any time, 
+   * even if the HIT is not yet "reviewable". If a HIT has multiple assignments, and has 
+   * received some results but has not yet become "reviewable", you can still retrieve the partial 
+   * results with this method.
    * 
-   * @param hitId
-   * @param pageNum
-   * @param getFullResponse
-   * @return An array of Assignments
+   * The results are sorted by SubmitTime.  
+   * 
+   * @param hitId            the Id of the HIT for which completed assignments are to be returned
+   * @param pageNum          The page of results to return. Once the assignments have been filtered, 
+   *                         sorted, and divided into pages, the page corresponding 
+   *                         to pageNum is returned as the results of the operation. 
+   * @param getFullResponse  if true, all properties of the HIT are returned. If false, only the HIT Id 
+   *                         and HIT type Id are returned.
+   * @return an array of Assignments
    * @throws ServiceException
    */
   public Assignment[] getAssignmentsForHIT(String hitId, int pageNum, boolean getFullResponse) 
@@ -703,9 +912,9 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves requester's available balance.  
+   * Retrieves Requester's available balance.
    * 
-   * @return requester's available balance
+   * @return Requester's available balance
    * @throws ServiceException
    */
   public double getAccountBalance() throws ServiceException {
@@ -716,11 +925,13 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves requester's reviewable HITs found on the requested page for the given HIT Type.
+   * Retrieves the Requester's reviewable HITs found on the specified page for the given HIT Type.
    * 
-   * @param hitId
-   * @param pageNum
-   * @return An array of Reviewable HITs
+   * @param hitTypeId    the ID of the HIT type to consider for the query
+   * @param pageNum      The page of results to return. Once the HIT types
+   *                     have been filtered, sorted, and divided into pages, the page 
+   *                     corresponding to pageNum is returned.
+   * @return an array of Reviewable HITs
    * @throws ServiceException
    */
   public HIT[] getReviewableHITs(String hitTypeId, int pageNum) throws ServiceException {
@@ -739,11 +950,12 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves any HITs found on the requested page.  
-   * The request uses the default responseGroup of "Minimal".
+   * Retrieves the Requester's HITs found on the specified page.  
    * 
-   * @param pageNum
-   * @return An array of HITs
+   * @param pageNum           The page of results to return. Once the HITs
+   *                          have been filtered, sorted, and divided into pages, the page 
+   *                          corresponding to pageNum is returned.
+   * @return an array of HITs
    * @throws ServiceException
    */
   public HIT[] searchHITs(int pageNum) throws ServiceException {
@@ -751,12 +963,15 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves requester's reviewable HITs found on the requested page for the given HIT Type.  
+   * Retrieves the Requester's HITs found on the specified page.  
    * The request uses either the default or full responseGroup.
    * 
-   * @param pageNum
-   * @param getFullResponse
-   * @return An array of HITs
+   * @param pageNum           The page of results to return. Once the HITs
+   *                          have been filtered, sorted, and divided into pages, the page 
+   *                          corresponding to pageNum is returned.
+   * @param getFullResponse   if true, all properties for the HIT are returned. If false, only the
+   *                          HIT Id and the HIT type Id are returned.
+   * @return an array of HITs
    * @throws ServiceException
    */
   public HIT[] searchHITs(int pageNum, boolean getFullResponse) throws ServiceException {
@@ -777,10 +992,14 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves any Qualification Types found on the requested page.
+   * Retrieves any Qualification Types found on the specified page. This method returns only 
+   * Qualification types that the Requester created and that can be requested through the Amazon Mechanical 
+   * Turk web site. Qualification types that are assigned by the system cannot be requested.
    * 
-   * @param pageNum
-   * @return An array of QualificationTypes
+   * @param pageNum  The page of results to return. Once the Qualification types 
+   *                 have been filtered, sorted, and divided into pages, the page 
+   *                 corresponding to pageNum is returned.
+   * @return an array of QualificationTypes
    * @throws ServiceException
    */
   public QualificationType[] searchQualificationTypes(int pageNum) throws ServiceException {
@@ -802,9 +1021,9 @@ public class RequesterService extends RequesterServiceRaw {
   //-------------------------------------------------------------
 
   /**
-   * Sets the status of the given HIT as Reviewable.
+   * Moves a HIT from Reviewing status to Reviewable status.
    * 
-   * @param hitId
+   * @param hitId  the Id of the HIT to set
    * @throws ServiceException
    */
   public void setHITAsReviewable(String hitId) throws ServiceException {
@@ -814,9 +1033,9 @@ public class RequesterService extends RequesterServiceRaw {
   }  
 
   /**
-   * Sets the status of the given HIT as Reviewing.
+   * Moves a HIT from Reviewable status to Reviewing status.
    * 
-   * @param hitId
+   * @param hitId  the Id of the HIT to set
    * @throws ServiceException
    */
   public void setHITAsReviewing(String hitId) throws ServiceException {
@@ -826,10 +1045,9 @@ public class RequesterService extends RequesterServiceRaw {
   }   
 
   /**
-   * Retrieves all active HITs in the system.  
-   * The request uses the full responseGroup.
-   * 
-   * @return An array of HITs
+   * Retrieves all of the Requester's active HITs. 
+   *  
+   * @return an array of HITs
    * @throws ServiceException
    */
   public HIT[] searchAllHITs() throws ServiceException {
@@ -853,9 +1071,9 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves all active Qualifications in the system.
+   * Retrieves all active Qualification types in the system.
    * 
-   * @return An array of QualificationTypes
+   * @return an array of QualificationTypes
    * @throws ServiceException
    */
   public QualificationType[] getAllQualificationTypes() throws ServiceException {
@@ -882,10 +1100,10 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves all of requester's reviewable HITs of the given HIT Type.
+   * Retrieves all of the Requester's reviewable HITs of the specified HIT type.
    * 
-   * @param hitTypeId
-   * @return An array of Reviewable HITs
+   * @param hitTypeId  the ID of the HIT type of the HITs to consider for the query
+   * @return an array of Reviewable HITs
    * @throws ServiceException
    */
   public HIT[] getAllReviewableHITs(String hitTypeId) throws ServiceException {
@@ -912,10 +1130,10 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves all of requester's assignments for the given HIT.
+   * Retrieves all submitted assignments for a HIT.
    * 
-   * @param hitId
-   * @return An array of Assignments
+   * @param hitId    the Id of the HIT for which the assignments are returned
+   * @return an array of Assignments
    * @throws ServiceException
    */
   public Assignment[] getAllAssignmentsForHIT(String hitId) throws ServiceException {   
@@ -923,10 +1141,11 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves all of requester's assignments for the given HIT for which rewiewable work is submitted.
+   * Retrieves all assignments for a HIT for which 
+   * reviewable work has been submitted.
    * 
-   * @param hitId
-   * @return An array of Assignments
+   * @param hitId    the Id of the HIT for which the assignments are returned
+   * @return an array of Assignments
    * @throws ServiceException
    */
   public Assignment[] getAllSubmittedAssignmentsForHIT(String hitId) throws ServiceException {   
@@ -934,10 +1153,12 @@ public class RequesterService extends RequesterServiceRaw {
   }  
 
   /**
-   * Retrieves all of requester's assignments for the given HIT that are in a certain status
+   * Retrieves all assignments that have the 
+   * the specified status.
    * 
-   * @param hitId
-   * @return An array of Assignments
+   * @param hitId   the Id of the HIT for which the assignments are returned
+   * @param status  the status value of the assignments to return.
+   * @return an array of Assignments
    * @throws ServiceException
    */
   public Assignment[] getAllAssignmentsForHIT(String hitId, AssignmentStatus[] status) throws ServiceException {	  
@@ -971,13 +1192,15 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Creates a single checkbox Qualification Type.  The QualificationTest simply asks the worker
-   * to check off the box to receive a Qualification immediately.
+   * Creates a single checkbox Qualification Type.  The QualificationTest simply asks the Worker
+   * to check the box to receive a Qualification immediately.
    * 
-   * @param name
-   * @param description
-   * @param keywords
-   * @return The created QualificationType
+   * @param name          the name of the Qualification type
+   * @param description   a description of the Qualification type that is displayed 
+   *                      when a user examines a Qualification type
+   * @param keywords      one or more words or phrases, separated by commas, that describe 
+   *                      the Qualification type
+   * @return the created QualificationType
    * @throws ServiceException
    */
   public QualificationType createSingleCheckboxQualificationType(String name, String description, 
@@ -995,10 +1218,10 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Disposes the given Qualification Type.  The Qualification Type becomes inactive.
+   * Sets the specified Qualification Type to be inactive.
    * 
-   * @param qualificationTypeId
-   * @return The modified QualificationType
+   * @param qualificationTypeId      the Id of the Qualification type to dispose
+   * @return the modified QualificationType
    * @throws ServiceException
    */
   public QualificationType disposeQualificationType(String qualificationTypeId) {
@@ -1010,9 +1233,9 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Retrieves the total number of active HITs for the requester.
+   * Retrieves the total number of active HITs for the Requester.
    * 
-   * @return The total number of active HITs for the requester
+   * @return the total number of active HITs for the Requester
    * @throws ServiceException
    */
   public int getTotalNumHITsInAccount() throws ServiceException {
@@ -1030,12 +1253,19 @@ public class RequesterService extends RequesterServiceRaw {
   }	
 
   /**
-   * Sets up an email notification setting for the given HIT Type.
+   * Sets up email notification settings for the given HIT Type.
    * 
-   * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2006-10-31/ApiReference_NotificationDataStructureArticle.html
-   * @param hitTypeId
-   * @param emailAddress
-   * @param event
+   * @param hitTypeId     the Id of the HIT type for which to send the notification
+   * @param emailAddress  the email address to send the notification
+   * @param event         the event that caused the notification. The possible events are:
+   *                      <ul>
+   *                        <li>AssignmentAccepted</li>
+   *                        <li>AssignmentAbandoned</li>
+   *                        <li>AssignmentReturned</li>
+   *                        <li>AssignmentSubmitted</li>
+   *                        <li>HITReviewable</li>
+   *                        <li>HITExpired</li>
+   *                      </ul>
    * @throws ServiceException
    */
   public void sendTestEmailEventNotification(String hitTypeId, String emailAddress, EventType event) {
@@ -1050,10 +1280,8 @@ public class RequesterService extends RequesterServiceRaw {
   /**
    * Extracts the QuestionFormAnswers object from the given answer XML.
    * 
-   * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2006-10-31/ApiReference_QuestionFormAnswersDataStructureArticle.html
-   * @param answerXML
-   * @return A QuestionFormAnswers object that contains the answers
-   * @throws ServiceException
+   * @param answerXML   the answer XML string
+   * @return a QuestionFormAnswers object that contains the answers
    */
   public static QuestionFormAnswers parseAnswers(String answerXML) {
     try {
@@ -1071,20 +1299,32 @@ public class RequesterService extends RequesterServiceRaw {
     }
   }
 
+  /**
+   * Extracts the answer values from the given AnswerType object.  When the answer type is
+   * Selections, this method returns the selections separated by the pipe character.  When the answer
+   * type is UploadedFileKey, this method returns the S3 file key followed by the file's size in bytes.
+   * 
+   * @param assignmentId       The assignment for which the asnwers are extracted. If null, the upload 
+   *                           URL might be invalid.
+   * @param answer             the type of the answer
+   * @return a String representation of the answer
+   * @throws ServiceException
+   */
   public static String getAnswerValue(String assignmentId, QuestionFormAnswersType.AnswerType answer) {
     return getAnswerValue(assignmentId, answer, false);
   }
 
   /**
    * Extracts the answer values from the given AnswerType object.  When the answer type is
-   * Selections, returns the selections separated by the pipe character.  When the answer
-   * type is UploadedFileKey, returns the S3 file key followed by the file's size in bytes.
-   * 
-   * @param assignmentId If null, the upload URL might be invalid 
-   * @param answer
-   * @param includeQuestionId Prepend the answer with the associated QuestionIdentifier and a tab
-   * @return A String representation of the answer
-   * @throws ServiceException
+   * Selections, this method returns the selections separated by the pipe character.  When the answer
+   * type is UploadedFileKey, this method returns the S3 file key followed by the file's size in bytes.
+   *  
+   * @param assignmentId      The assignment for which the answers are extracted. If null, 
+   *                          the upload URL might be invalid.
+   * @param answer            an AnswerType structure
+   * @param includeQuestionId specifies whether to prepend the answer with the associated 
+   *                          QuestionIdentifier and a tab
+   * @return a String representation of the answer
    */
   public static String getAnswerValue(String assignmentId, QuestionFormAnswersType.AnswerType answer, boolean includeQuestionId) {
 
@@ -1132,28 +1372,48 @@ public class RequesterService extends RequesterServiceRaw {
     return result;
   }
 
-  @Deprecated
+  /**
+   * Creates multiple HITs. 
+   * 
+   * @param input          the input data needed for the HITs
+   * @param props          the properties of the HITs
+   * @param question       the question asked in the HITs
+   * @return an array of HIT objects
+   * @throws Exception
+   * @deprecated
+   */
   public HIT[] createHITs(HITDataReader input, HITProperties props, HITQuestion question) {
     return createHITs( input, props, question, RequesterService.LOAD_ALL );
   }
 
   /**
-   * Creates HITs in bulk.
+   * Creates multiple HITs.
    * 
-   * @param input
-   * @param properties
-   * @param question
-   * @param success
-   * @param failure
-   * @return An array of HIT objects
-   * @throws ServiceException
+   * @param input          the input data needed for the HITs
+   * @param props          the properties of the HITs
+   * @param question       the question in the HITs
+   * @param success        the file that contains the HITId and HITTypeId for the created 
+   *                       HITs
+   * @param failure        the failure file
+   * @return an array of HIT objects
+   * @throws Exception
    */
   public HIT[] createHITs(HITDataInput input, HITProperties props, HITQuestion question,
       HITDataOutput success, HITDataOutput failure) throws Exception {
     return createHITs(input, props, question, RequesterService.LOAD_ALL, success, failure);
   }
-
-  @Deprecated
+  
+  /**
+   * Creates multiple HITs. 
+   * 
+   * @param input          the input data needed for the HITs
+   * @param props          the properties of the HITs
+   * @param question       the question asked in the HITs
+   * @param numHITToLoad   the number of HITs to create
+   * @return an array of HIT objects
+   * @throws Exception
+   * @deprecated
+   */  
   public HIT[] createHITs(HITDataReader input, HITProperties props, HITQuestion question, int numHITToLoad) {
     String prefix = input.getFileName();
     if ( prefix == null || prefix.length() == 0 ) {
@@ -1182,16 +1442,18 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Creates HITs in bulk.
+   * Creates multiple HITs. 
    * 
-   * @param input
-   * @param properties
-   * @param question
-   * @param numHITsToLoad
-   * @param success
-   * @param failure
-   * @return An array of HIT objects
-   * @throws ServiceException
+   * @param input          the input data needed for the HITs
+   * @param props          the properties of the HITs
+   * @param question       a question structure that contains the question
+   *                       asked in the HITs 
+   * @param numHITToLoad   the number of HITs to load
+   * @param success        the file that contains the HIT Ids and HIT type Ids of the
+   *                       created HITs
+   * @param failure        the failure file 
+   * @return an array of HIT objects
+   * @throws Exception
    */
   public HIT[] createHITs(HITDataInput input, HITProperties props, HITQuestion question, int numHITToLoad,
       HITDataOutput success, HITDataOutput failure) throws Exception {     
@@ -1271,6 +1533,9 @@ public class RequesterService extends RequesterServiceRaw {
             props.getAnnotation(), 
             null,       // qualification requirements 
             null,       // response group
+            null,       // uniqueRequestToken
+            null,       // assignmentReviewPolicy
+            null,       // hitReviewPolicy
             null);      // async callback   
       }
 
@@ -1333,11 +1598,10 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Get the results for a HIT Type.
+   * Gets the results for specified HIT types.
    * 
-   * @param successget
-   * @return A HITTypeResults object
-   * @throws ServiceException
+   * @param success  a success file that contains the HITTypes 
+   * @return a HITTypeResults object that contains the results of the HITs
    */
   public HITTypeResults getHITTypeResults(HITDataInput success) {
     HITTypeResults r = null;
@@ -1350,6 +1614,14 @@ public class RequesterService extends RequesterServiceRaw {
     return r;
   }
 
+  /**
+   * Gets the results of HITs.
+   * 
+   * @param success   a success file that contains the HITs to get results for
+   * @param callback  your callback method. This method is called asynchronously as 
+   *                  each result is retrieved. This method can track the progress of 
+   *                  the batch so you do not exit the process until the batch is completed.
+   */
   public void getResults(HITDataInput success, BatchItemCallback callback) {
 
     if (callback == null) {
@@ -1430,13 +1702,12 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Get the results for a HIT Type and print each HIT results to a file.
+   * Gets the results for specified HIT types.
    * 
-   * @param success
-   * @param outputFile
+   * @param success a success file that contains the HIT Types
+   * @param output  the output file
    * @return A HITTypeResults object
    * @throws IOException 
-   * @throws ServiceException
    * @deprecated
    */
   public HITTypeResults getHITTypeResults(HITDataInput success, HITDataOutput output) throws IOException {
@@ -1538,6 +1809,15 @@ public class RequesterService extends RequesterServiceRaw {
     }
   }
 
+  /**
+   * Creates a preview of a HIT in a file.
+   * 
+   * @param previewFileName  the file in which the HIT is copied
+   * @param input            the input needed for the HIT
+   * @param props            the properties of the HIT 
+   * @param question         the question asked in the HIT
+   * @throws ServiceException
+   */
   public void previewHIT(String previewFileName, HITDataInput input, HITProperties props, 
       HITQuestion question) throws ServiceException {
     try {
@@ -1555,13 +1835,13 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Return a preview of the HIT in HTML
+   * Returns a preview of the HIT as HTML
    * 
-   * @param input
-   * @param properties
-   * @param question
-   * @return An HTML preview of the HIT
-   * @throws ServiceException
+   * @param input       the input needed for the HIT
+   * @param props       the properties of the HIT 
+   * @param question    the question asked in the HIT
+   * @return an HTML preview of the HIT
+   * @throws Exception
    */
   public String previewHIT(HITDataInput input, HITProperties props, 
       HITQuestion question) throws Exception {   
@@ -1621,6 +1901,11 @@ public class RequesterService extends RequesterServiceRaw {
     return previewString;
   }
 
+  /**
+   * Appends the application signature to the request header.
+   * 
+   * @param signature  the application signature
+   */
   public void appendApplicationSignature(String signature) {
     super.appendApplicationSignature(signature, this.getPort());
   }
@@ -1630,19 +1915,19 @@ public class RequesterService extends RequesterServiceRaw {
   //-------------------------------------------------------------
 
   /**
-   * Returns the URL for the Mechanical Turk website.
+   * Returns the URL for the Amazon Mechanical Turk web site.
    *
-   * @return URL
+   * @return the web site URL
    */
   public String getWebsiteURL() {
     return this.config.getWorkerWebsiteURL();
   }
 
   /**
-   * Formats the given double value into the currency format.
+   * Formats the given value into the currency format for US dollars.
    *
-   * @param value
-   * @return formatted value
+   * @param value  the value to format
+   * @return the formatted value
    */
   public static String formatCurrency(double value) {
     DecimalFormat form = new DecimalFormat("0.00"); // print up to two decimal points
@@ -1651,10 +1936,11 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Constructs a Question XML String that contains a single question.
+   * Constructs a Question XML string for a simple HIT with one question and 
+   * a freetext response.
    * 
-   * @param question The question phrase to ask
-   * @return A Question XML
+   * @param question the question to ask
+   * @return a Question XML string
    */
   public static String getBasicFreeTextQuestion(String question) {
     String q = "";
@@ -1678,10 +1964,10 @@ public class RequesterService extends RequesterServiceRaw {
   //-------------------------------------------------------------
 
   /**
-   * Constructs a QualificationTest XML String that contains a simple checkbox.
+   * Constructs a Qualification test XML string for a single checkbox.
    * 
-   * @param name The name of the Qualification Test
-   * @return A QualificationTest XML
+   * @param name the name of the Qualification Test
+   * @return a QualificationTest XML string
    */
   protected String getBasicCheckboxQualificationTest(String name) {
     String test = "";
@@ -1710,10 +1996,10 @@ public class RequesterService extends RequesterServiceRaw {
   }
 
   /**
-   * Constructs a Qualification AnswerKey XML String for the simple checkbox QualificationTest.
-   * The AnswerKey would assign a Qualification Score of 100 to the worker.
+   * Constructs a Qualification AnswerKey XML string for the single checkbox Qualification test.
+   * The AnswerKey assigns a Qualification Score of 100 to the worker.
    * 
-   * @return A Qualification AnswerKey XML
+   * @return a Qualification AnswerKey XML string
    */
   protected String getBasicCheckboxQualificationAnswerKey() {
     String answerKey = "";

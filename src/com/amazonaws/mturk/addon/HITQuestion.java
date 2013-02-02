@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ public class HITQuestion {
     p.setProperty( "file.resource.loader.path", f.getParent() == null ? "." : f.getParent());
     p.setProperty( "file.resource.loader.cache", "true");
     p.setProperty( "file.resource.loader.modificationCheckInterval", "2");
+    p.setProperty( "input.encoding", "UTF-8");
     
     engine.setProperty( VelocityEngine.RUNTIME_LOG_LOGSYSTEM, log);    
     engine.init(p);

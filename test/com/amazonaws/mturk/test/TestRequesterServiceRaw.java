@@ -1,6 +1,6 @@
 package com.amazonaws.mturk.test;
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,16 +20,21 @@ import com.amazonaws.mturk.requester.Comparator;
 import com.amazonaws.mturk.requester.DataPoint;
 import com.amazonaws.mturk.requester.EventType;
 import com.amazonaws.mturk.requester.GetAccountBalanceResult;
+import com.amazonaws.mturk.requester.GetBlockedWorkersResult;
 import com.amazonaws.mturk.requester.GetHITsForQualificationTypeResult;
+import com.amazonaws.mturk.requester.GetReviewResultsForHITResult;
 import com.amazonaws.mturk.requester.HIT;
 import com.amazonaws.mturk.requester.HelpRequestHelpType;
 import com.amazonaws.mturk.requester.Information;
-import com.amazonaws.mturk.requester.LimitGroupType;
 import com.amazonaws.mturk.requester.NotificationSpecification;
+import com.amazonaws.mturk.requester.ParameterMapEntry;
+import com.amazonaws.mturk.requester.PolicyParameter;
 import com.amazonaws.mturk.requester.QualificationRequirement;
 import com.amazonaws.mturk.requester.QualificationType;
 import com.amazonaws.mturk.requester.QualificationTypeStatus;
 import com.amazonaws.mturk.requester.RequesterStatistic;
+import com.amazonaws.mturk.requester.ReviewPolicy;
+import com.amazonaws.mturk.requester.ReviewPolicyLevel;
 import com.amazonaws.mturk.requester.SearchHITsResult;
 import com.amazonaws.mturk.requester.SearchHITsSortProperty;
 import com.amazonaws.mturk.requester.SearchQualificationTypesResult;
@@ -57,7 +62,37 @@ public class TestRequesterServiceRaw extends TestBase {
   public void testCreateHIT() throws ServiceException {
     createHIT();
   }
- 
+  
+  public void testCreateHITIdempotency() throws ServiceException {
+    try {
+      String uniqueRequestToken = "testCreateHITIdempotency" + unique;
+      for (int i = 0; i < 2; i++) {
+        service.createHIT(
+            null, // hitTypeId
+            defaultHITTitle + unique,
+            defaultHITDescription,
+            null, // keywords
+            RequesterService.getBasicFreeTextQuestion(defaultQuestion),
+            defaultReward,
+            defaultAssignmentDurationInSeconds,
+            defaultAutoApprovalDelayInSeconds,
+            defaultLifetimeInSeconds,
+            defaultMaxAssignments,
+            null, // requesterAnnotation
+            null, // qualificationRequirements
+            null, // responseGroup
+            uniqueRequestToken,
+            null, // assignmentReviewPolicy
+            null); // hitReviewPolicy
+      }
+      fail("Re-use of uniqueRequestToken did not cause an error");
+    } catch (ServiceException e) {
+      // expected
+      assertTrue("createHIT failed, but not because of uniqueRequestToken re-use",
+          e.getMessage().contains("AWS.MechanicalTurk.HITAlreadyExists"));
+    }
+  }
+  
   public void testCreateHITWithInvalidQualTypeId() throws ServiceException {
     try {
       QualificationRequirement qualRequirement = new QualificationRequirement();
@@ -71,6 +106,86 @@ public class TestRequesterServiceRaw extends TestBase {
       // Expected exception
     } catch (InvalidParameterValueException e ) {
       // Expected exception
+    }
+  }
+  
+  public void testCreateHITWithReviewPolicy() throws ServiceException {
+    /* Create some review policies.
+     * The policy details are nonsense and are not asserted on -- this test
+     * just verifies that (1) the act of plugging in a review policy does not
+     * cause createHIT to blow up, and that (2) said review policies appear in
+     * the HIT's review results. */
+    PolicyParameter[] skaParams = {
+        new PolicyParameter("AnswerKey", null,
+            new ParameterMapEntry[] { new ParameterMapEntry("1", new String[] {"correct answer"}) })
+    };
+    ReviewPolicy assignmentReviewPolicy = new ReviewPolicy("ScoreMyKnownAnswers/2011-09-01", skaParams);
+    PolicyParameter[] phrParams = {
+        new PolicyParameter("QuestionIds", new String[] {"1"}, null),
+        new PolicyParameter("QuestionAgreementThreshold", new String[] {"50"}, null),
+    };
+    ReviewPolicy hitReviewPolicy = new ReviewPolicy("SimplePlurality/2011-09-01", phrParams);
+    
+    // Create the HIT with review policies
+    HIT hit = service.createHIT(
+        null, // hitTypeId
+        defaultHITTitle + unique,
+        defaultHITDescription,
+        null, // keywords
+        RequesterService.getBasicFreeTextQuestion(defaultQuestion),
+        defaultReward,
+        defaultAssignmentDurationInSeconds,
+        defaultAutoApprovalDelayInSeconds,
+        defaultLifetimeInSeconds,
+        defaultMaxAssignments,
+        null, // requesterAnnotation
+        null, // qualificationRequirements
+        null, // responseGroup
+        null, // uniqueRequestToken
+        assignmentReviewPolicy,
+        hitReviewPolicy);
+    
+    // Make sure the policies were actually added to the created HIT
+    GetReviewResultsForHITResult results = service.getReviewResultsForHIT(
+        hit.getHITId(),
+        new ReviewPolicyLevel[] {ReviewPolicyLevel.Assignment, ReviewPolicyLevel.HIT},
+        true, // retrieveActions
+        true, // retrieveResults
+        1, // pageNumber
+        1000, // pageSize
+        null); // responseGroup
+    assertEquals("Unexpected assignment policy", results.getAssignmentReviewPolicy().getPolicyName(), "ScoreMyKnownAnswers/2011-09-01");
+    assertEquals("Unexpected HIT policy", results.getHITReviewPolicy().getPolicyName(), "SimplePlurality/2011-09-01");
+  }
+  
+  public void testCreateHITWithInvalidReviewPolicy() throws ServiceException {
+    // create a SKA policy that is missing required parameter AnswerKey 
+    ReviewPolicy assignmentReviewPolicy = new ReviewPolicy("ScoreMyKnownAnswers/2011-09-01",
+        new PolicyParameter[] {});
+    
+    try {
+      service.createHIT(
+          null, // hitTypeId
+          defaultHITTitle + unique,
+          defaultHITDescription,
+          null, // keywords
+          RequesterService.getBasicFreeTextQuestion(defaultQuestion),
+          defaultReward,
+          defaultAssignmentDurationInSeconds,
+          defaultAutoApprovalDelayInSeconds,
+          defaultLifetimeInSeconds,
+          defaultMaxAssignments,
+          null, // requesterAnnotation
+          null, // qualificationRequirements
+          null, // responseGroup
+          null, // uniqueRequestToken
+          assignmentReviewPolicy,
+          null); // hitReviewPolicy
+      fail("createHIT succeeded, despite having an invalid review policy");
+    } catch (ServiceException e) {
+      // expected
+      assertTrue("createHIT failed, but not because of an invalid review policy",
+          e.getMessage().contains("The AnswerKey parameter is mandatory."));
     }
   }
   
@@ -257,10 +372,21 @@ public class TestRequesterServiceRaw extends TestBase {
     
     assertNotNull(result);
   }
-
+  
+  public void testGetRequesterWorkerStatistic() throws ServiceException {
+    DataPoint[] datum = service.getRequesterWorkerStatistic(
+        RequesterStatistic.NumberAssignmentsApproved,
+        TimePeriod.LifeToDate,
+        luckyWorker,
+        null, // count
+        null); // responseGroup
+    assertEquals("Unexpected number of DataPoints returned", datum.length, 1);
+    assertNotNull("Returned DataPoint was null", datum[0]);
+  }
+  
   public void testNotifyWorkers() throws ServiceException { 
     
-    // This test fails intermitently with AWS.ServiceUnavailable
+    // This test fails intermittently with AWS.ServiceUnavailable
     //     or with AWS.MechanicalTurk.InvalidTransportEndpoint
     // This appears to be a problem with the MTS API rather than the SDK
     
@@ -270,17 +396,39 @@ public class TestRequesterServiceRaw extends TestBase {
     );
   }
   
-  public void testSetWorkerAcceptLimit() throws ServiceException { 
-    service.setWorkerAcceptLimit(defaultWorkerAcceptLimit, LimitGroupType.Default, null);
+  public void testGetBlockedWorkers() throws ServiceException {
+    GetBlockedWorkersResult result = service.getBlockedWorkers(1, 10);
+    assertTrue(result.getPageNumber() + " is an invalid page number (expected page 1)",
+        result.getPageNumber() != null && result.getPageNumber() == 1);
+    assertTrue(result.getNumResults() + " is an invalid number of results per page (expected from 0 to 10)",
+        result.getNumResults() != null && result.getNumResults() >= 0 && result.getNumResults() <= 10);
+    assertTrue("Total result count " + result.getTotalNumResults()
+        + " is smaller than this page's count " + result.getNumResults(),
+        result.getTotalNumResults() != null && result.getTotalNumResults() >= result.getNumResults());
   }
   
-  public void testGetWorkerAcceptLimit() throws ServiceException { 
-    int maxLimit = service.getWorkerAcceptLimit(LimitGroupType.Default, null);
-    
-    assertTrue(maxLimit == defaultWorkerAcceptLimit);
+  public void testGetAssignment() throws ServiceException {
+    try {
+      service.getAssignment("INVALIDASSIGNMENTID");
+      fail("getAssignment succeeded, despite not having a valid assignment ID");
+    } catch (ServiceException e) {
+      // expected
+      assertContains("Cause of getAssignment failure wasn't an invalid assignment ID.",
+          "AWS.MechanicalTurk.AssignmentDoesNotExist", e.getMessage());
+    }
   }
   
- 
+  public void testApproveRejectedAssignment() throws ServiceException {
+    try {
+      service.approveRejectedAssignment("INVALIDASSIGNMENTID", defaultReason);
+      fail("approveRejectedAssignment succeeded, despite not having a valid assignment ID");
+    } catch (ServiceException e) {
+      // expected
+      assertContains("Cause of approveRejectedAssignment wasn't an invalid assignment ID.",
+          "AWS.MechanicalTurk.AssignmentDoesNotExist", e.getMessage());
+    }
+  }
+  
   public void testHelp() throws ServiceException { 
     Information info = service.help(new String[] { "CreateHIT" }, 
         HelpRequestHelpType.Operation);
@@ -305,6 +453,9 @@ public class TestRequesterServiceRaw extends TestBase {
         defaultMaxAssignments, null, // requesterAnnotation
         null, 
         null,	// responseGroup
+        null, // uniqueRequestToken
+        null, // assignmentReviewPolicy
+        null, // hitReviewPolicy
         null	// callback
     );
 
@@ -351,6 +502,9 @@ public class TestRequesterServiceRaw extends TestBase {
           defaultLifetimeInSeconds, defaultMaxAssignments, null, // requesterAnnotation
           null, 
           null,	// responseGroup
+          null, // uniqueRequestToken
+          null, // assignmentReviewPolicy
+          null, // hitReviewPolicy
           null	// callback
       );
 
@@ -395,6 +549,9 @@ public class TestRequesterServiceRaw extends TestBase {
         defaultMaxAssignments, null, // requesterAnnotation
         null, 
         null,	// responseGroup
+        null, // uniqueRequestToken
+        null, // assignmentReviewPolicy
+        null, // hitReviewPolicy
         null	// callback
     );
 
@@ -426,6 +583,9 @@ public class TestRequesterServiceRaw extends TestBase {
         defaultMaxAssignments, null, // requesterAnnotation
         null, 
         null,			// responseGroup
+        null, // uniqueRequestToken
+        null, // assignmentReviewPolicy
+        null, // hitReviewPolicy
         simpleCallback	// callback
     );
 
@@ -451,6 +611,9 @@ public class TestRequesterServiceRaw extends TestBase {
           defaultLifetimeInSeconds, defaultMaxAssignments, null, // requesterAnnotation
           null, 
           null,	// responseGroup
+          null, // uniqueRequestToken
+          null, // assignmentReviewPolicy
+          null, // hitReviewPolicy
           simpleCallback);
 
       assertNotNull(replies[i]);

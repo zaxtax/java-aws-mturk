@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 
 package com.amazonaws.mturk.service.axis;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Hashtable;
@@ -27,6 +29,8 @@ import java.util.List;
 import javax.xml.namespace.QName;
 
 import org.apache.axis.AxisFault;
+import org.apache.commons.httpclient.protocol.Protocol;
+import org.apache.commons.httpclient.contrib.ssl.StrictSSLProtocolSocketFactory;
 import org.w3c.dom.Element;
 
 import com.amazonaws.mturk.filter.Message;
@@ -91,7 +95,14 @@ public abstract class AWSService {
 
   static {
     httpHeaders = new Hashtable<String, String>(1);
-    httpHeaders.put(HTTP_HEADER_AMAZON_SOFTWARE, "MTurkJavaSDK/1.2.1");
+    httpHeaders.put(HTTP_HEADER_AMAZON_SOFTWARE, "MTurkJavaSDK/1.6.2");
+    
+    /* We need to swap out HTTP/SSL implementations, because Axis doesn't do
+     * HTTPS properly -- it doesn't check the certificate to see if it was
+     * issued to the domain we're connecting to. */
+    System.setProperty("axis.ClientConfigFile", "com/amazonaws/mturk/service/axis/mturk-client-config.wsdd");
+    Protocol.registerProtocol("https",
+            new Protocol("https", new StrictSSLProtocolSocketFactory(), 443));
   }
   
   protected ClientConfig config = null;

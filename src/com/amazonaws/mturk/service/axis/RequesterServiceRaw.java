@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import com.amazonaws.mturk.filter.RetryFilter;
 import com.amazonaws.mturk.requester.AWSMechanicalTurkRequester;
 import com.amazonaws.mturk.requester.AWSMechanicalTurkRequesterLocator;
 import com.amazonaws.mturk.requester.ApproveAssignmentRequest;
+import com.amazonaws.mturk.requester.ApproveRejectedAssignmentRequest;
 import com.amazonaws.mturk.requester.AssignQualificationRequest;
 import com.amazonaws.mturk.requester.Assignment;
 import com.amazonaws.mturk.requester.AssignmentStatus;
@@ -41,9 +42,13 @@ import com.amazonaws.mturk.requester.ExtendHITRequest;
 import com.amazonaws.mturk.requester.ForceExpireHITRequest;
 import com.amazonaws.mturk.requester.GetAccountBalanceRequest;
 import com.amazonaws.mturk.requester.GetAccountBalanceResult;
+import com.amazonaws.mturk.requester.GetAssignmentRequest;
+import com.amazonaws.mturk.requester.GetAssignmentResult;
 import com.amazonaws.mturk.requester.GetAssignmentsForHITRequest;
 import com.amazonaws.mturk.requester.GetAssignmentsForHITResult;
 import com.amazonaws.mturk.requester.GetAssignmentsForHITSortProperty;
+import com.amazonaws.mturk.requester.GetBlockedWorkersRequest;
+import com.amazonaws.mturk.requester.GetBlockedWorkersResult;
 import com.amazonaws.mturk.requester.GetBonusPaymentsRequest;
 import com.amazonaws.mturk.requester.GetBonusPaymentsResult;
 import com.amazonaws.mturk.requester.GetFileUploadURLRequest;
@@ -59,19 +64,20 @@ import com.amazonaws.mturk.requester.GetQualificationTypeRequest;
 import com.amazonaws.mturk.requester.GetQualificationsForQualificationTypeRequest;
 import com.amazonaws.mturk.requester.GetQualificationsForQualificationTypeResult;
 import com.amazonaws.mturk.requester.GetRequesterStatisticRequest;
+import com.amazonaws.mturk.requester.GetRequesterWorkerStatisticRequest;
+import com.amazonaws.mturk.requester.GetReviewResultsForHITRequest;
+import com.amazonaws.mturk.requester.GetReviewResultsForHITResult;
 import com.amazonaws.mturk.requester.GetReviewableHITsRequest;
 import com.amazonaws.mturk.requester.GetReviewableHITsResult;
 import com.amazonaws.mturk.requester.GetReviewableHITsSortProperty;
 import com.amazonaws.mturk.requester.GetStatisticResult;
-import com.amazonaws.mturk.requester.GetWorkerAcceptLimitRequest;
-import com.amazonaws.mturk.requester.GetWorkerAcceptLimitResult;
 import com.amazonaws.mturk.requester.GrantBonusRequest;
 import com.amazonaws.mturk.requester.GrantQualificationRequest;
 import com.amazonaws.mturk.requester.HIT;
+import com.amazonaws.mturk.requester.HITLayoutParameter;
 import com.amazonaws.mturk.requester.HelpRequest;
 import com.amazonaws.mturk.requester.HelpRequestHelpType;
 import com.amazonaws.mturk.requester.Information;
-import com.amazonaws.mturk.requester.LimitGroupType;
 import com.amazonaws.mturk.requester.NotificationSpecification;
 import com.amazonaws.mturk.requester.NotifyWorkersRequest;
 import com.amazonaws.mturk.requester.Price;
@@ -85,6 +91,8 @@ import com.amazonaws.mturk.requester.RegisterHITTypeResult;
 import com.amazonaws.mturk.requester.RejectAssignmentRequest;
 import com.amazonaws.mturk.requester.RejectQualificationRequestRequest;
 import com.amazonaws.mturk.requester.RequesterStatistic;
+import com.amazonaws.mturk.requester.ReviewPolicy;
+import com.amazonaws.mturk.requester.ReviewPolicyLevel;
 import com.amazonaws.mturk.requester.ReviewableHITStatus;
 import com.amazonaws.mturk.requester.RevokeQualificationRequest;
 import com.amazonaws.mturk.requester.SearchHITsRequest;
@@ -96,7 +104,6 @@ import com.amazonaws.mturk.requester.SearchQualificationTypesSortProperty;
 import com.amazonaws.mturk.requester.SendTestEventNotificationRequest;
 import com.amazonaws.mturk.requester.SetHITAsReviewingRequest;
 import com.amazonaws.mturk.requester.SetHITTypeNotificationRequest;
-import com.amazonaws.mturk.requester.SetWorkerAcceptLimitRequest;
 import com.amazonaws.mturk.requester.SortDirection;
 import com.amazonaws.mturk.requester.TimePeriod;
 import com.amazonaws.mturk.requester.UnblockWorkerRequest;
@@ -167,7 +174,12 @@ public class RequesterServiceRaw extends FilteredAWSService
       GetWorkerAcceptLimit("GetWorkerAcceptLimitResult"),
       BlockWorker("BlockWorkerResult"),
       UnblockWorker("UnblockWorkerResult"),
-      Help("Information");
+      Help("Information"),
+      GetReviewResultsForHIT("GetReviewResultsForHITResult"),
+      GetRequesterWorkerStatistic("GetStatisticResult"),
+      ApproveRejectedAssignment("ApproveRejectedAssignmentResult"),
+      GetAssignment("GetAssignmentResult"),
+      GetBlockedWorkers("GetBlockedWorkersResult");
 
     private String resultTypeName;
 
@@ -288,32 +300,39 @@ public class RequesterServiceRaw extends FilteredAWSService
   }
   
   private CreateHITRequest wrapHITParams(String hitTypeId, String title, String description, String keywords, 
-	      String question, Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds, 
-	      Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation, 
-	      QualificationRequirement[] qualificationRequirements, String[] responseGroup) {
-	    CreateHITRequest request = new CreateHITRequest();
-
-	    if (question != null)         request.setQuestion(question);
-	    if (lifetimeInSeconds != null)request.setLifetimeInSeconds(lifetimeInSeconds);
-	    if (hitTypeId != null)        request.setHITTypeId(hitTypeId);
-	    if (title != null)            request.setTitle(title);
-	    if (description != null)      request.setDescription(description);
-	    if (keywords != null)         request.setKeywords(keywords);
-	    if (maxAssignments != null)   request.setMaxAssignments(maxAssignments);
-	    if (responseGroup != null)    request.setResponseGroup(responseGroup);
-	    if (requesterAnnotation != null)        request.setRequesterAnnotation(requesterAnnotation);
-	    if (assignmentDurationInSeconds != null)request.setAssignmentDurationInSeconds(assignmentDurationInSeconds);
-	    if (autoApprovalDelayInSeconds != null) request.setAutoApprovalDelayInSeconds(autoApprovalDelayInSeconds);
-	    if (qualificationRequirements != null)  request.setQualificationRequirement(qualificationRequirements);
-
-	    if (reward != null) {
-	      Price p = new Price();
-	      p.setAmount(new BigDecimal(reward));
-	      p.setCurrencyCode("USD");
-	      request.setReward(p);
-	    }
-
-	    return request;
+      String question, Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds, 
+      Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation, 
+      QualificationRequirement[] qualificationRequirements, String[] responseGroup,
+      String uniqueRequestToken, ReviewPolicy assignmentReviewPolicy, ReviewPolicy hitReviewPolicy,
+      String hitLayoutId, HITLayoutParameter[] hitLayoutParameters) {
+    CreateHITRequest request = new CreateHITRequest();
+  
+    if (question != null)         request.setQuestion(question);
+    if (lifetimeInSeconds != null)request.setLifetimeInSeconds(lifetimeInSeconds);
+    if (hitTypeId != null)        request.setHITTypeId(hitTypeId);
+    if (title != null)            request.setTitle(title);
+    if (description != null)      request.setDescription(description);
+    if (keywords != null)         request.setKeywords(keywords);
+    if (maxAssignments != null)   request.setMaxAssignments(maxAssignments);
+    if (responseGroup != null)    request.setResponseGroup(responseGroup);
+    if (hitReviewPolicy != null)  request.setHITReviewPolicy(hitReviewPolicy);
+    if (hitLayoutId != null)      request.setHITLayoutId(hitLayoutId);
+    if (requesterAnnotation != null)        request.setRequesterAnnotation(requesterAnnotation);
+    if (assignmentDurationInSeconds != null)request.setAssignmentDurationInSeconds(assignmentDurationInSeconds);
+    if (autoApprovalDelayInSeconds != null) request.setAutoApprovalDelayInSeconds(autoApprovalDelayInSeconds);
+    if (qualificationRequirements != null)  request.setQualificationRequirement(qualificationRequirements);
+    if (assignmentReviewPolicy != null)     request.setAssignmentReviewPolicy(assignmentReviewPolicy);
+    if (uniqueRequestToken != null)         request.setUniqueRequestToken(uniqueRequestToken);
+    if (hitLayoutParameters != null)        request.setHITLayoutParameter(hitLayoutParameters);
+    
+    if (reward != null) {
+      Price p = new Price();
+      p.setAmount(new BigDecimal(reward));
+      p.setCurrencyCode("USD");
+      request.setReward(p);
+    }
+    
+    return request;
   }
 
   //-------------------------------------------------------------
@@ -321,31 +340,78 @@ public class RequesterServiceRaw extends FilteredAWSService
   //-------------------------------------------------------------
 
   /**
-   * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_CreateHITOperation.html
+   * Backwards compatibility for programs that don't specify review policies
    */
   public HIT createHIT(String hitTypeId, String title, String description, String keywords, 
       String question, Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds, 
       Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation, 
       QualificationRequirement[] qualificationRequirements, String[] responseGroup)
     throws ServiceException {
-
-    CreateHITRequest request = wrapHITParams(hitTypeId, title, description, keywords, 
-    	      question, reward, assignmentDurationInSeconds, autoApprovalDelayInSeconds, 
-    	      lifetimeInSeconds, maxAssignments, requesterAnnotation, 
-    	      qualificationRequirements, responseGroup);
-
+    
+    return createHIT(hitTypeId, title, description, keywords, question, reward,
+        assignmentDurationInSeconds, autoApprovalDelayInSeconds, lifetimeInSeconds,
+        maxAssignments, requesterAnnotation, qualificationRequirements, responseGroup,
+        null, null, null);
+  } 
+  
+  /**
+   * Support for creating HITs using HIT layouts
+   * @see http://docs.amazonwebservices.com/AWSMechTurk/2012-03-25/AWSMturkAPI/ApiReference_HITLayoutArticle.html
+   */
+  public HIT createHIT(String hitTypeId, String title, String description, String keywords, 
+      Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds, 
+      Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation, 
+      QualificationRequirement[] qualificationRequirements, String[] responseGroup,
+      String uniqueRequestToken, ReviewPolicy assignmentReviewPolicy, ReviewPolicy hitReviewPolicy,
+      String hitLayoutId, HITLayoutParameter[] hitLayoutParameters)
+    throws ServiceException {
+    
+    CreateHITRequest request = wrapHITParams(hitTypeId, title, description, keywords,
+        null, reward, assignmentDurationInSeconds, autoApprovalDelayInSeconds,
+        lifetimeInSeconds, maxAssignments, requesterAnnotation,
+        qualificationRequirements, responseGroup, uniqueRequestToken,
+        assignmentReviewPolicy, hitReviewPolicy, hitLayoutId, hitLayoutParameters);
+    
     HIT result = null;
     result = (HIT) executeRequest(request, 
         ResultMatch.CreateHIT.name(),
         ResultMatch.CreateHIT.getResultTypeName());
-
+    
     if (result == null) {
       throw new ServiceException("No response");
     }
-
+    
+    return result;
+  }
+  
+  /**
+   * @see http://docs.amazonwebservices.com/AWSMechTurk/2012-03-25/AWSMturkAPI/ApiReference_CreateHITOperation.html
+   */
+  public HIT createHIT(String hitTypeId, String title, String description, String keywords, 
+      String question, Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds, 
+      Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation, 
+      QualificationRequirement[] qualificationRequirements, String[] responseGroup,
+      String uniqueRequestToken, ReviewPolicy assignmentReviewPolicy, ReviewPolicy hitReviewPolicy)
+    throws ServiceException {
+    
+    CreateHITRequest request = wrapHITParams(hitTypeId, title, description, keywords,
+        question, reward, assignmentDurationInSeconds, autoApprovalDelayInSeconds,
+        lifetimeInSeconds, maxAssignments, requesterAnnotation,
+        qualificationRequirements, responseGroup, uniqueRequestToken,
+        assignmentReviewPolicy, hitReviewPolicy, null, null);
+    
+    HIT result = null;
+    result = (HIT) executeRequest(request, 
+        ResultMatch.CreateHIT.name(),
+        ResultMatch.CreateHIT.getResultTypeName());
+    
+    if (result == null) {
+      throw new ServiceException("No response");
+    }
+    
     return result;
   } 
-
+  
   /**
    * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_RegisterHITTypeOperation.html
    */ 
@@ -655,6 +721,35 @@ public class RequesterServiceRaw extends FilteredAWSService
         ResultMatch.RejectAssignment.getResultTypeName());
   }
   
+  /**
+   * @see http://docs.amazonwebservices.com/AWSMechTurk/2012-03-25/AWSMturkAPI/ApiReference_ApproveRejectedAssignmentOperation.html
+   */
+  public void approveRejectedAssignment(String assignmentId, String requesterFeedback) {
+    ApproveRejectedAssignmentRequest request = new ApproveRejectedAssignmentRequest();
+    if (assignmentId != null) request.setAssignmentId(assignmentId);
+    if (requesterFeedback != null) request.setRequesterFeedback(requesterFeedback);
+    
+    executeRequest(request, ResultMatch.ApproveRejectedAssignment.name(),
+        ResultMatch.ApproveRejectedAssignment.getResultTypeName());
+  }
+  
+  /**
+   * @see http://docs.amazonwebservices.com/AWSMechTurk/2012-03-25/AWSMturkAPI/ApiReference_GetAssignmentOperation.html
+   */
+  public GetAssignmentResult getAssignment(String assignmentId) {
+    GetAssignmentRequest request = new GetAssignmentRequest();
+    if (assignmentId != null) request.setAssignmentId(assignmentId);
+    
+    GetAssignmentResult result = (GetAssignmentResult) executeRequest(
+        request, ResultMatch.GetAssignment.name(),
+        ResultMatch.GetAssignment.getResultTypeName());
+    
+    if (result == null) {
+      throw new ServiceException("No response");
+    }
+    return result; 
+  }
+  
   private GetAssignmentsForHITRequest wrapAssignmentParams(String hitId, SortDirection sortDirection, AssignmentStatus[] status, 
 		  GetAssignmentsForHITSortProperty sortProperty, Integer pageNumber, Integer pageSize, String[] responseGroup) {
 	  GetAssignmentsForHITRequest request = new GetAssignmentsForHITRequest();
@@ -668,7 +763,7 @@ public class RequesterServiceRaw extends FilteredAWSService
 
 	  return request;
   }
-
+  
   /**
    * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_GetAssignmentsForHITOperation.html
    */ 
@@ -691,7 +786,54 @@ public class RequesterServiceRaw extends FilteredAWSService
 
     return result; 
   }
-
+  
+  public GetReviewResultsForHITResult getReviewResultsForHIT(String HITId,
+      ReviewPolicyLevel[] policyLevel, Boolean retrieveActions, Boolean retrieveResults,
+      Integer pageNumber, Integer pageSize, String[] responseGroup)
+    throws ServiceException {
+    
+    GetReviewResultsForHITRequest request = new GetReviewResultsForHITRequest();
+    if (HITId != null) request.setHITId(HITId);
+    if (policyLevel != null) request.setPolicyLevel(policyLevel);
+    if (retrieveActions != null) request.setRetrieveActions(retrieveActions);
+    if (retrieveResults != null) request.setRetrieveResults(retrieveResults);
+    if (pageNumber != null) request.setPageNumber(pageNumber);
+    if (pageSize != null) request.setPageSize(pageSize);
+    if (responseGroup != null) request.setResponseGroup(responseGroup);
+    
+    GetReviewResultsForHITResult result = null;
+    result = (GetReviewResultsForHITResult) executeRequest(request,
+        ResultMatch.GetReviewResultsForHIT.name(),
+        ResultMatch.GetReviewResultsForHIT.getResultTypeName());
+    if (result == null) {
+      throw new ServiceException("No response");
+    }
+    
+    return result;
+  }
+  
+  public DataPoint[] getRequesterWorkerStatistic(
+      RequesterStatistic statistic, TimePeriod timePeriod,
+      String workerId, Integer count, String[] responseGroup)
+  throws ServiceException {
+    
+    GetRequesterWorkerStatisticRequest request = new GetRequesterWorkerStatisticRequest();
+    if (statistic != null) request.setStatistic(statistic);
+    if (timePeriod != null) request.setTimePeriod(timePeriod);
+    if (workerId != null) request.setWorkerId(workerId);
+    if (count != null) request.setCount(count);
+    if (responseGroup != null) request.setResponseGroup(responseGroup);
+    
+    GetStatisticResult result = null;
+    result = (GetStatisticResult) executeRequest(request,
+        ResultMatch.GetRequesterWorkerStatistic.name(),
+        ResultMatch.GetRequesterWorkerStatistic.getResultTypeName());
+    if (result == null) {
+      throw new ServiceException("No response");
+    }
+    return result.getDataPoint();
+  }
+  
   /**
    * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_GetFileUploadURLOperation.html
    */ 
@@ -1098,41 +1240,6 @@ public class RequesterServiceRaw extends FilteredAWSService
   }
 
   /**
-   * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_SetWorkerAcceptLimitOperation.html
-   */
-  public void setWorkerAcceptLimit(Integer maxWorkerAcceptLimit, LimitGroupType type,
-      String limitGroupId) throws ServiceException {
-    SetWorkerAcceptLimitRequest request = new SetWorkerAcceptLimitRequest();
-    if (maxWorkerAcceptLimit != null)  request.setMaxWorkerAcceptLimit(maxWorkerAcceptLimit);
-    if (type != null)      request.setLimitGroupType(type);
-    if (limitGroupId != null)     request.setLimitGroupId(limitGroupId);
-
-    executeRequest(request, ResultMatch.SetWorkerAcceptLimit.name(),
-        ResultMatch.SetWorkerAcceptLimit.getResultTypeName());
-  }
-
-  /**
-   * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_GetWorkerAcceptLimitOperation.html
-   */ 
-  public int getWorkerAcceptLimit(LimitGroupType type, String limitGroupId) throws ServiceException { 
-    GetWorkerAcceptLimitRequest request = new GetWorkerAcceptLimitRequest();
-    if (type != null) request.setLimitGroupType(type);
-    if (limitGroupId != null) request.setLimitGroupId(limitGroupId);
-
-    GetWorkerAcceptLimitResult result = null;
-
-    result = (GetWorkerAcceptLimitResult) executeRequest(request, 
-        ResultMatch.GetWorkerAcceptLimit.name(),
-        ResultMatch.GetWorkerAcceptLimit.getResultTypeName());
-
-    if (result == null) {
-      throw new ServiceException("No response");
-    }
-
-    return result.getMaxWorkerAcceptLimit();
-  }
-  
-  /**
    * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-06-21/ApiReference_BlockWorkerOperation.html
    */ 
   public void blockWorker( String workerId, String reason ) {
@@ -1153,7 +1260,25 @@ public class RequesterServiceRaw extends FilteredAWSService
       
       executeRequest( request, ResultMatch.UnblockWorker.name(), ResultMatch.UnblockWorker.getResultTypeName());
   }
-
+  
+  /**
+   * @see http://docs.amazonwebservices.com/AWSMechTurk/2012-03-25/AWSMturkAPI/ApiReference_GetBlockedWorkersOperation.html
+   */
+  public GetBlockedWorkersResult getBlockedWorkers (int pageNumber, int pageSize) {
+    GetBlockedWorkersRequest request = new GetBlockedWorkersRequest();
+    request.setPageNumber(pageNumber);
+    request.setPageSize(pageSize);
+    
+    GetBlockedWorkersResult result = (GetBlockedWorkersResult) executeRequest(request,
+        ResultMatch.GetBlockedWorkers.name(),
+        ResultMatch.GetBlockedWorkers.getResultTypeName());
+    
+    if (result == null) {
+      throw new ServiceException("No response");
+    }
+    return result;
+  }
+  
   /**
    * @see http://docs.amazonwebservices.com/AWSMechanicalTurkRequester/2007-03-12/ApiReference_GetWorkerAcceptLimitOperation.html
    */ 
@@ -1196,20 +1321,43 @@ public class RequesterServiceRaw extends FilteredAWSService
       String question, Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds, 
       Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation, 
       QualificationRequirement[] qualificationRequirements, String[] responseGroup,
-      AsyncCallback callback) {
-
+      String uniqueRequestToken, ReviewPolicy assignmentReviewPolicy, ReviewPolicy hitReviewPolicy, AsyncCallback callback) {
+    
     CreateHITRequest request = wrapHITParams(hitTypeId, title, description, keywords, 
         question, reward, assignmentDurationInSeconds, autoApprovalDelayInSeconds, 
         lifetimeInSeconds, maxAssignments, requesterAnnotation, 
-        qualificationRequirements, responseGroup);
-
-    return executeAsyncRequest(request, 
+        qualificationRequirements, responseGroup, uniqueRequestToken,
+        assignmentReviewPolicy, hitReviewPolicy, null, null);
+    
+    return executeAsyncRequest(request,
         ResultMatch.CreateHIT.name(),
         ResultMatch.CreateHIT.getResultTypeName(),
         callback);
-  } 
-
-
+  }
+  
+  /**
+   * Support for creating HITs using HIT layouts
+   * @see http://docs.amazonwebservices.com/AWSMechTurk/2012-03-25/AWSMturkAPI/ApiReference_HITLayoutArticle.html
+   */
+  public AsyncReply createHITAsync(String hitTypeId, String title, String description, String keywords,
+      Double reward, Long assignmentDurationInSeconds, Long autoApprovalDelayInSeconds,
+      Long lifetimeInSeconds, Integer maxAssignments, String requesterAnnotation,
+      QualificationRequirement[] qualificationRequirements, String[] responseGroup,
+      String uniqueRequestToken, ReviewPolicy assignmentReviewPolicy, ReviewPolicy hitReviewPolicy,
+      String hitLayoutId, HITLayoutParameter[] hitLayoutParameters, AsyncCallback callback) {
+    
+    CreateHITRequest request = wrapHITParams(hitTypeId, title, description, keywords, 
+        null, reward, assignmentDurationInSeconds, autoApprovalDelayInSeconds, 
+        lifetimeInSeconds, maxAssignments, requesterAnnotation, 
+        qualificationRequirements, responseGroup, uniqueRequestToken,
+        assignmentReviewPolicy, hitReviewPolicy, hitLayoutId, hitLayoutParameters);
+    
+    return executeAsyncRequest(request,
+        ResultMatch.CreateHIT.name(),
+        ResultMatch.CreateHIT.getResultTypeName(),
+        callback);
+  }
+  
   /**
    * Loads a HIT asynchronously using the Axis worker thread pool.
    * It returns an AsyncReply object, which can either be used to

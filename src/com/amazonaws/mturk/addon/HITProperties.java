@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Amazon Technologies, Inc.
+ * Copyright 2007-2012 Amazon Technologies, Inc.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 
 package com.amazonaws.mturk.addon;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -406,7 +408,7 @@ public class HITProperties {
   private static Properties loadPropertiesFile(String fileName) throws IOException {
     // Read properties file.
     Properties props = new Properties();
-    props.load(new java.io.FileInputStream(new java.io.File(fileName)));
+    props.load(new InputStreamReader(new FileInputStream(new java.io.File(fileName)), "UTF-8"));
     return props;
   }
 }

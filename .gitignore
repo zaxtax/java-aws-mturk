@@ -1,9 +1,0 @@
-.DS_Store
-*~
-target
-build
-*.iws
-*.ipr
-*.iml
-*.class
-.idea
